@@ -1,0 +1,120 @@
+import { decodeBase64, encodeBase64 } from './base64'
+
+const API = 'https://api.github.com'
+
+export class GitHubError extends Error {
+  constructor(public status: number, message: string) {
+    super(message)
+  }
+}
+
+/** 檔案已在別處被修改（sha 不符），或要新增的檔案已經存在 */
+export class ConflictError extends GitHubError {
+  constructor(status: number, message: string, public path: string) {
+    super(status, message)
+  }
+}
+
+export interface TreeFile {
+  path: string
+  sha: string
+}
+
+export interface RemoteFile {
+  path: string
+  sha: string
+  text: string
+}
+
+const encodePath = (path: string) => path.split('/').map(encodeURIComponent).join('/')
+
+function humanize(status: number, msg: string): string {
+  if (status === 401) return 'Token 無效或已過期，請到「設定」登出後重新輸入。'
+  if (status === 403) return `權限不足或已達 API 次數上限（${msg}）`
+  if (status === 404) return '找不到 repo 或檔案，請確認 repo 名稱以及 token 是否有該 repo 的權限。'
+  return `GitHub 錯誤 ${status}：${msg}`
+}
+
+export class GitHub {
+  constructor(private token: string, public owner: string, public repo: string) {}
+
+  private async req(method: string, path: string, body?: unknown, filePath = '') {
+    let res: Response
+    try {
+      res = await fetch(`${API}/repos/${this.owner}/${this.repo}${path}`, {
+        method,
+        cache: 'no-store',
+        headers: {
+          Authorization: `Bearer ${this.token}`,
+          Accept: 'application/vnd.github+json',
+          'X-GitHub-Api-Version': '2022-11-28',
+          ...(body ? { 'Content-Type': 'application/json' } : {}),
+        },
+        body: body ? JSON.stringify(body) : undefined,
+      })
+    } catch {
+      throw new GitHubError(0, '網路連線失敗，請檢查網路後再試一次。')
+    }
+    if (res.ok) return res.status === 204 ? null : res.json()
+    const msg: string = await res.json().then((j) => j.message ?? '').catch(() => res.statusText)
+    // 409：sha 過期；422 + sha：要新增的檔案已存在
+    if (filePath && (res.status === 409 || (res.status === 422 && /sha/i.test(msg)))) {
+      throw new ConflictError(res.status, msg, filePath)
+    }
+    throw new GitHubError(res.status, humanize(res.status, msg))
+  }
+
+  checkAccess(): Promise<{ full_name: string; private: boolean }> {
+    return this.req('GET', '')
+  }
+
+  /** 列出 repo 內所有檔案；空 repo 回傳 [] */
+  async listFiles(): Promise<TreeFile[]> {
+    try {
+      const data = await this.req('GET', '/git/trees/HEAD?recursive=1')
+      return (data.tree as { type: string; path: string; sha: string }[])
+        .filter((t) => t.type === 'blob')
+        .map(({ path, sha }) => ({ path, sha }))
+    } catch (e) {
+      // 空 repo（還沒有任何 commit）會回 409 或 404；404 時先確認 repo 本身存在
+      if (e instanceof GitHubError && (e.status === 409 || e.status === 404)) {
+        if (e.status === 404) await this.checkAccess()
+        return []
+      }
+      throw e
+    }
+  }
+
+  async getBlob(sha: string): Promise<string> {
+    const data = await this.req('GET', `/git/blobs/${sha}`)
+    return decodeBase64(data.content)
+  }
+
+  /** 讀取單一檔案；不存在回傳 null */
+  async getFile(path: string): Promise<RemoteFile | null> {
+    try {
+      const data = await this.req('GET', `/contents/${encodePath(path)}`)
+      return { path, sha: data.sha, text: decodeBase64(data.content) }
+    } catch (e) {
+      if (e instanceof GitHubError && e.status === 404) return null
+      throw e
+    }
+  }
+
+  /** 新增（不帶 sha）或更新（帶讀取時的 sha）。sha 不符時丟出 ConflictError，絕不覆蓋 */
+  async putFile(path: string, text: string, message: string, sha?: string): Promise<string> {
+    const data = await this.req(
+      'PUT',
+      `/contents/${encodePath(path)}`,
+      { message, content: encodeBase64(text), ...(sha ? { sha } : {}) },
+      path,
+    )
+    return data.content.sha
+  }
+
+  async deleteFile(path: string, sha: string, message: string): Promise<void> {
+    await this.req('DELETE', `/contents/${encodePath(path)}`, { message, sha }, path)
+  }
+}
+
+export const errorMessage = (e: unknown) => (e instanceof Error ? e.message : String(e))

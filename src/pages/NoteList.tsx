@@ -7,6 +7,8 @@ import { monthLabel } from '../lib/date'
 import type { Note } from '../lib/notes'
 import { useStore } from '../store'
 
+const UNDATED = 'undated'
+
 export function NoteList() {
   const { notes, categories, mode, status, reload } = useStore()
   const [params, setParams] = useSearchParams()
@@ -21,14 +23,14 @@ export function NoteList() {
     setParams(next, { replace: true })
   }
 
-  const months = useMemo(() => [...new Set(notes.map((n) => n.meta.date.slice(0, 7)))], [notes])
+  const months = useMemo(() => [...new Set(notes.map((n) => n.meta.date.slice(0, 7) || UNDATED))], [notes])
 
   const groups = useMemo(() => {
     const filtered = notes.filter(
       (n) =>
         (!cat || n.category === cat) &&
         (!tag || n.meta.tags.includes(tag)) &&
-        (!month || n.meta.date.startsWith(month)),
+        (!month || (month === UNDATED ? !n.meta.date : n.meta.date.startsWith(month))),
     )
     const map = new Map<string, Note[]>()
     for (const n of filtered) {
@@ -66,7 +68,7 @@ export function NoteList() {
           <option value="">所有月份</option>
           {months.map((m) => (
             <option key={m} value={m}>
-              {monthLabel(m)}
+              {monthLabel(m === UNDATED ? '' : m)}
             </option>
           ))}
         </select>

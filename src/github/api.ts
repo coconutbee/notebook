@@ -36,7 +36,21 @@ function humanize(status: number, msg: string): string {
 }
 
 export class GitHub {
-  constructor(private token: string, public owner: string, public repo: string) {}
+  /** branch 省略時使用 repo 的預設分支 */
+  constructor(
+    private token: string,
+    public owner: string,
+    public repo: string,
+    public branch?: string,
+  ) {}
+
+  private get ref() {
+    return this.branch ? `?ref=${encodeURIComponent(this.branch)}` : ''
+  }
+
+  private get branchBody() {
+    return this.branch ? { branch: this.branch } : {}
+  }
 
   private async req(method: string, path: string, body?: unknown, filePath = '') {
     let res: Response
@@ -71,12 +85,12 @@ export class GitHub {
   /** 列出 repo 內所有檔案；空 repo 回傳 [] */
   async listFiles(): Promise<TreeFile[]> {
     try {
-      const data = await this.req('GET', '/git/trees/HEAD?recursive=1')
+      const data = await this.req('GET', `/git/trees/${encodeURIComponent(this.branch ?? 'HEAD')}?recursive=1`)
       return (data.tree as { type: string; path: string; sha: string }[])
         .filter((t) => t.type === 'blob')
         .map(({ path, sha }) => ({ path, sha }))
     } catch (e) {
-      // 空 repo（還沒有任何 commit）會回 409 或 404；404 時先確認 repo 本身存在
+      // 空 repo（還沒有任何 commit）或分支不存在會回 409 / 404；404 時先確認 repo 本身存在
       if (e instanceof GitHubError && (e.status === 409 || e.status === 404)) {
         if (e.status === 404) await this.checkAccess()
         return []
@@ -93,7 +107,7 @@ export class GitHub {
   /** 讀取單一檔案；不存在回傳 null */
   async getFile(path: string): Promise<RemoteFile | null> {
     try {
-      const data = await this.req('GET', `/contents/${encodePath(path)}`)
+      const data = await this.req('GET', `/contents/${encodePath(path)}${this.ref}`)
       return { path, sha: data.sha, text: decodeBase64(data.content) }
     } catch (e) {
       if (e instanceof GitHubError && e.status === 404) return null
@@ -106,14 +120,34 @@ export class GitHub {
     const data = await this.req(
       'PUT',
       `/contents/${encodePath(path)}`,
-      { message, content: encodeBase64(text), ...(sha ? { sha } : {}) },
+      { message, content: encodeBase64(text), ...(sha ? { sha } : {}), ...this.branchBody },
       path,
     )
     return data.content.sha
   }
 
   async deleteFile(path: string, sha: string, message: string): Promise<void> {
-    await this.req('DELETE', `/contents/${encodePath(path)}`, { message, sha }, path)
+    await this.req('DELETE', `/contents/${encodePath(path)}`, { message, sha, ...this.branchBody }, path)
+  }
+
+  /** 分支不存在時建立一個獨立（orphan）分支，只含一個 README，和 main 的程式碼完全無關 */
+  async ensureBranch(readme: string): Promise<void> {
+    if (!this.branch) return
+    try {
+      await this.req('GET', `/git/ref/heads/${encodeURIComponent(this.branch)}`)
+      return
+    } catch (e) {
+      if (!(e instanceof GitHubError && e.status === 404)) throw e
+    }
+    const tree = await this.req('POST', '/git/trees', {
+      tree: [{ path: 'README.md', mode: '100644', type: 'blob', content: readme }],
+    })
+    const commit = await this.req('POST', '/git/commits', {
+      message: `建立 ${this.branch} 分支`,
+      tree: tree.sha,
+      parents: [],
+    })
+    await this.req('POST', '/git/refs', { ref: `refs/heads/${this.branch}`, sha: commit.sha })
   }
 }
 

@@ -217,8 +217,8 @@ export function NoteEdit() {
             </select>
           </div>
           <div>
-            <label htmlFor="date">日期</label>
-            <input id="date" type="date" value={form.date} onChange={(e) => e.target.value && update({ date: e.target.value })} />
+            <label htmlFor="date">日期（可留空）</label>
+            <input id="date" type="date" value={form.date} onChange={(e) => update({ date: e.target.value })} />
           </div>
         </div>
 
@@ -237,7 +237,7 @@ export function NoteEdit() {
           </label>
         </fieldset>
         {form.visibility === 'public' && (
-          <p className="small hint">公開筆記會複製到公開 repo，任何人都能在網站上看到。之後改回私人會從網站移除，但公開 repo 的 git 歷史仍保有舊版本。</p>
+          <p className="small hint">公開筆記會複製到公開分支，任何人都能在網站上看到。之後改回私人會從網站移除，但公開分支的 git 歷史仍保有舊版本。</p>
         )}
       </div>
 

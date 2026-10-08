@@ -5,4 +5,4 @@ export const toDateStr = (d = new Date()) => `${d.getFullYear()}-${pad(d.getMont
 
 export const nowIso = () => new Date().toISOString()
 
-export const monthLabel = (ym: string) => `${ym.slice(0, 4)} 年 ${Number(ym.slice(5, 7))} 月`
+export const monthLabel = (ym: string) => (ym ? `${ym.slice(0, 4)} 年 ${Number(ym.slice(5, 7))} 月` : '未標日期')

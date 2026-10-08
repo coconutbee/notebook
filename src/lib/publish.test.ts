@@ -7,6 +7,7 @@ import { syncPublic } from './publish'
 
 /** 最小的記憶體版 GitHub REST API，行為對齊真實 API 的衝突規則 */
 const repos = new Map<string, Map<string, string>>()
+const branches = new Set<string>()
 
 async function fakeFetch(url: string, init: RequestInit = {}): Promise<Response> {
   const u = new URL(url)
@@ -17,7 +18,18 @@ async function fakeFetch(url: string, init: RequestInit = {}): Promise<Response>
   const sub = rest.join('/')
   const method = init.method ?? 'GET'
   if (sub === '') return json(200, { full_name: `${owner}/${name}`, private: true })
-  if (sub === 'git/trees/HEAD') {
+  // 分支：只模擬「公開 repo 的分支在第一次 POST refs 之後才存在」
+  if (sub.startsWith('git/ref/heads/')) return branches.has(`${owner}/${name}`) ? json(200, {}) : json(404, { message: 'Not Found' })
+  if (method === 'POST' && sub === 'git/trees') {
+    for (const t of JSON.parse(String(init.body)).tree) repo.set(t.path, t.content)
+    return json(201, { sha: 'tree' })
+  }
+  if (method === 'POST' && sub === 'git/commits') return json(201, { sha: 'commit' })
+  if (method === 'POST' && sub === 'git/refs') {
+    branches.add(`${owner}/${name}`)
+    return json(201, {})
+  }
+  if (sub.startsWith('git/trees/')) {
     if (!repo.size) return json(409, { message: 'Git Repository is empty.' })
     const tree = await Promise.all([...repo].map(async ([path, text]) => ({ type: 'blob', path, sha: await gitBlobSha(text) })))
     return json(200, { tree })
@@ -48,7 +60,7 @@ async function fakeFetch(url: string, init: RequestInit = {}): Promise<Response>
 }
 
 const data = new GitHub('t', 'me', 'data')
-const pub = new GitHub('t', 'me', 'pub')
+const pub = new GitHub('t', 'me', 'pub', 'public-notes')
 
 async function save(title: string, visibility: 'public' | 'private', body = '內容'): Promise<Note> {
   const meta = { title, date: '2026-10-08', tags: ['x'], visibility }
@@ -60,6 +72,7 @@ async function save(title: string, visibility: 'public' | 'private', body = '內
 
 beforeEach(() => {
   repos.clear()
+  branches.clear()
   repos.set('me/data', new Map())
   repos.set('me/pub', new Map())
   vi.stubGlobal('fetch', fakeFetch)
@@ -91,7 +104,7 @@ describe('公開同步', () => {
     const b = await save('私人日記', 'private')
     await syncPublic(pub, [a, b])
     const files = repos.get('me/pub')!
-    expect([...files.keys()].sort()).toEqual(['index.json', a.path])
+    expect([...files.keys()].sort()).toEqual(['README.md', 'index.json', a.path].sort())
     const index = JSON.parse(files.get('index.json')!)
     expect(index.notes.map((n: { title: string }) => n.title)).toEqual(['公開文'])
     expect(files.get('index.json')).not.toContain('私人日記')
@@ -107,7 +120,7 @@ describe('公開同步', () => {
 
     const priv = { ...a, meta: { ...a.meta, visibility: 'private' as const } }
     await syncPublic(pub, [priv])
-    expect([...repos.get('me/pub')!.keys()]).toEqual(['index.json'])
+    expect([...repos.get('me/pub')!.keys()].sort()).toEqual(['README.md', 'index.json'])
     expect(JSON.parse(repos.get('me/pub')!.get('index.json')!).notes).toEqual([])
   })
 })

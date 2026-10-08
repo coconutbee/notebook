@@ -51,6 +51,15 @@ describe('檔名', () => {
     expect(n.meta.date).toBe('2026-10-08')
     expect(buildNote('metrics/2026-10.json', 'x', '')).toBeNull()
   })
+
+  it('日期可省略', () => {
+    const p = notePath('工作', '', 'Git 基礎')
+    expect(p).toBe('notes/工作/Git-基礎.md')
+    const n = buildNote(p, 'abc', '---\ntitle: Git 基礎\ndate: ""\n---\nbody')!
+    expect(n.meta.date).toBe('')
+    expect(n.meta.title).toBe('Git 基礎')
+    expect(buildNote('notes/工作/2026-10-08-週會.md', 'x', '')!.meta.date).toBe('2026-10-08')
+  })
 })
 
 describe('config', () => {

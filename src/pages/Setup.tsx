@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { DATA_REPO, OWNER, PUBLIC_REPO } from '../config'
+import { DATA_REPO, OWNER, PUBLIC_BRANCH, PUBLIC_REPO } from '../config'
 import { GitHub, errorMessage } from '../github/api'
 import { saveToken } from '../lib/auth'
 
@@ -28,7 +28,7 @@ export function Setup() {
     )
     if (
       !pubOk &&
-      !confirm(`這個 token 無法存取 ${OWNER}/${PUBLIC_REPO}，「公開筆記」功能將無法使用（私人筆記不受影響）。仍要繼續嗎？`)
+      !confirm(`這個 token 無法存取 ${OWNER}/${PUBLIC_REPO}，「公開筆記」無法發布（私人筆記不受影響）。仍要繼續嗎？`)
     ) {
       setBusy(false)
       return
@@ -44,7 +44,7 @@ export function Setup() {
       <h1>設定</h1>
       <p>
         輸入 GitHub personal access token，用來讀寫私人資料 repo <code>{OWNER}/{DATA_REPO}</code>
-        {' '}和公開 repo <code>{OWNER}/{PUBLIC_REPO}</code>。
+        {' '}，以及發布公開筆記用的 <code>{OWNER}/{PUBLIC_REPO}</code>（<code>{PUBLIC_BRANCH}</code> 分支）。
       </p>
       <form onSubmit={submit} className="card form">
         <label htmlFor="token">Personal access token</label>

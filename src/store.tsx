@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { DATA_REPO, OWNER, PUBLIC_REPO } from './config'
+import { DATA_REPO, OWNER, PUBLIC_BRANCH, PUBLIC_REPO } from './config'
 import { GitHub, errorMessage } from './github/api'
 import { getToken } from './lib/auth'
 import { cacheGet, cachePrune, cacheSet } from './lib/cache'
@@ -57,7 +57,7 @@ async function mapPool<T, R>(items: T[], limit: number, fn: (t: T) => Promise<R>
 export function StoreProvider({ children }: { children: ReactNode }) {
   const token = getToken()
   const github = useMemo(
-    () => (token ? { data: new GitHub(token, OWNER, DATA_REPO), pub: new GitHub(token, OWNER, PUBLIC_REPO) } : null),
+    () => (token ? { data: new GitHub(token, OWNER, DATA_REPO), pub: new GitHub(token, OWNER, PUBLIC_REPO, PUBLIC_BRANCH) } : null),
     [token],
   )
   const [notes, setNotes] = useState<Note[]>([])

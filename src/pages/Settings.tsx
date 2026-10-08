@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { DATA_REPO, OWNER, PUBLIC_REPO } from '../config'
+import { DATA_REPO, OWNER, PUBLIC_BRANCH, PUBLIC_REPO } from '../config'
 import { useToast } from '../components/Toast'
 import { errorMessage } from '../github/api'
 import { logout } from '../lib/auth'
@@ -46,8 +46,12 @@ export function Settings() {
         <dl className="kv">
           <dt>私人資料 repo</dt>
           <dd>{repoLink(DATA_REPO)}</dd>
-          <dt>公開 repo</dt>
-          <dd>{repoLink(PUBLIC_REPO)}</dd>
+          <dt>公開筆記</dt>
+          <dd>
+            <a href={`https://github.com/${OWNER}/${PUBLIC_REPO}/tree/${PUBLIC_BRANCH}`} target="_blank" rel="noopener noreferrer">
+              {OWNER}/{PUBLIC_REPO}（{PUBLIC_BRANCH} 分支）
+            </a>
+          </dd>
           <dt>筆記</dt>
           <dd>
             {notes.length} 篇（公開 {publicCount} 篇）

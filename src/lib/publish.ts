@@ -1,6 +1,6 @@
 import { gitBlobSha } from '../github/base64'
 import type { GitHub } from '../github/api'
-import { OWNER, PUBLIC_REPO } from '../config'
+import { OWNER, PUBLIC_BRANCH, PUBLIC_REPO } from '../config'
 import { buildNote, sortNotes, type Note } from './notes'
 
 interface PublicEntry {
@@ -12,6 +12,12 @@ interface PublicEntry {
   body: string
 }
 
+const PUBLIC_README = `# 公開筆記
+
+這個分支由筆記本 App 自動產生，只包含標記為「公開」的筆記副本與 index.json。
+請不要手動編輯；原始筆記在私人 repo。
+`
+
 export const hasPublic = (notes: (Note | null | undefined)[]) => notes.some((n) => n?.meta.visibility === 'public')
 
 /**
@@ -21,6 +27,7 @@ export const hasPublic = (notes: (Note | null | undefined)[]) => notes.some((n) 
  */
 export async function syncPublic(pub: GitHub, notes: Note[]): Promise<void> {
   const desired = sortNotes(notes.filter((n) => n.meta.visibility === 'public'))
+  await pub.ensureBranch(PUBLIC_README)
   const existing = new Map((await pub.listFiles()).map((f) => [f.path, f.sha]))
   const wanted = new Set(desired.map((n) => n.path))
 
@@ -48,7 +55,7 @@ export async function syncPublic(pub: GitHub, notes: Note[]): Promise<void> {
 
 /** 訪客模式：不需要 token，從公開 repo 讀 index.json */
 export async function loadPublicNotes(): Promise<Note[]> {
-  const res = await fetch(`https://raw.githubusercontent.com/${OWNER}/${PUBLIC_REPO}/HEAD/index.json`, {
+  const res = await fetch(`https://raw.githubusercontent.com/${OWNER}/${PUBLIC_REPO}/${PUBLIC_BRANCH}/index.json`, {
     cache: 'no-cache',
   })
   if (res.status === 404) return []

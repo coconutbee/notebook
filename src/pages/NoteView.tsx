@@ -66,7 +66,7 @@ export function NoteView() {
       </header>
       <h1 className="note-heading">{note.meta.title}</h1>
       <div className="note-item-meta small muted">
-        <time>{note.meta.date}</time>
+        {note.meta.date ? <time>{note.meta.date}</time> : <span>未標日期</span>}
         <Link to={`/notes?cat=${encodeURIComponent(note.category)}`}>{note.category}</Link>
         {mode === 'owner' && <VisibilityBadge note={note} />}
       </div>

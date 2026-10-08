@@ -20,7 +20,7 @@ export function NoteItem({ note, showBadge }: { note: Note; showBadge: boolean }
       <Link to={`/note/${encodeNotePath(note.path)}`} className="note-item">
         <div className="note-item-top">
           <span className="note-title">{note.meta.title}</span>
-          <time className="muted small">{note.meta.date.slice(5).replace('-', '/')}</time>
+          {note.meta.date && <time className="muted small">{note.meta.date.slice(5).replace('-', '/')}</time>}
         </div>
         <div className="note-item-meta small muted">
           <span>{note.category}</span>

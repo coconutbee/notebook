@@ -66,8 +66,8 @@ export class GitHub {
         },
         body: body ? JSON.stringify(body) : undefined,
       })
-    } catch {
-      throw new GitHubError(0, '網路連線失敗，請檢查網路後再試一次。')
+    } catch (e) {
+      throw new GitHubError(0, `無法連到 GitHub，請檢查網路後再試一次。（${errorMessage(e)}）`)
     }
     if (res.ok) return res.status === 204 ? null : res.json()
     const msg: string = await res.json().then((j) => j.message ?? '').catch(() => res.statusText)
@@ -152,3 +152,21 @@ export class GitHub {
 }
 
 export const errorMessage = (e: unknown) => (e instanceof Error ? e.message : String(e))
+
+/** token 只能是可見的 ASCII 字元，否則瀏覽器會拒絕送出 header（看起來像網路錯誤） */
+export function checkTokenFormat(token: string): string | null {
+  if (!/^[!-~]+$/.test(token)) return 'Token 含有中文、全形或其他特殊字元。請只貼上 token 本身（github_pat_ 開頭的那一串）。'
+  if (!/^(github_pat_|gh[pousr]_)/.test(token)) return 'Token 格式看起來不對：fine-grained token 應以 github_pat_ 開頭。'
+  return null
+}
+
+/** 連線失敗時判斷原因：連不到 GitHub，還是只有帶 token 的請求被擋 */
+export async function diagnoseNetwork(): Promise<string> {
+  const reachable = await fetch(`${API}/zen`, { cache: 'no-store' }).then(
+    (r) => r.ok,
+    () => false,
+  )
+  return reachable
+    ? '可以連到 GitHub，但帶 token 的請求被擋下。請停用廣告阻擋等瀏覽器擴充功能，或換一個瀏覽器再試。'
+    : '這個瀏覽器完全連不到 api.github.com，可能是公司網路／防火牆、VPN 或瀏覽器擴充功能擋住了。請試試手機行動網路或其他網路。'
+}

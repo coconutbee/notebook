@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { DATA_REPO, OWNER, PUBLIC_BRANCH, PUBLIC_REPO } from '../config'
-import { GitHub, errorMessage } from '../github/api'
+import { GitHub, GitHubError, checkTokenFormat, diagnoseNetwork, errorMessage } from '../github/api'
 import { saveToken } from '../lib/auth'
 
 export function Setup() {
@@ -11,14 +11,21 @@ export function Setup() {
 
   async function submit(e: FormEvent) {
     e.preventDefault()
-    const t = token.trim()
+    // 去掉複製時夾帶的空白與換行
+    const t = token.replace(/\s/g, '')
     if (!t) return
+    const formatError = checkTokenFormat(t)
+    if (formatError) {
+      setError(formatError)
+      return
+    }
     setBusy(true)
     setError('')
     try {
       await new GitHub(t, OWNER, DATA_REPO).checkAccess()
     } catch (err) {
-      setError(`無法存取 ${OWNER}/${DATA_REPO}：${errorMessage(err)}`)
+      const hint = err instanceof GitHubError && err.status === 0 ? `\n${await diagnoseNetwork()}` : ''
+      setError(`無法存取 ${OWNER}/${DATA_REPO}：${errorMessage(err)}${hint}`)
       setBusy(false)
       return
     }

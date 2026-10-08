@@ -24,7 +24,13 @@ export function Setup() {
     try {
       await new GitHub(t, OWNER, DATA_REPO).checkAccess()
     } catch (err) {
-      const hint = err instanceof GitHubError && err.status === 0 ? `\n${await diagnoseNetwork()}` : ''
+      const status = err instanceof GitHubError ? err.status : -1
+      const hint =
+        status === 0
+          ? `\n${await diagnoseNetwork()}`
+          : status === 404
+            ? `\n這個 token 看不到 ${DATA_REPO}（私人 repo 沒權限時 GitHub 會回「找不到」）。請到 GitHub 編輯 token：Repository access 加入 ${DATA_REPO} 和 ${PUBLIC_REPO}，Contents 設為 Read and write。`
+            : ''
       setError(`無法存取 ${OWNER}/${DATA_REPO}：${errorMessage(err)}${hint}`)
       setBusy(false)
       return

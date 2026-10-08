@@ -85,7 +85,7 @@ export function NoteList() {
       <StatusBanner />
 
       {status !== 'loading' && groups.length === 0 && (
-        <p className="empty">{notes.length ? '沒有符合條件的筆記。' : '還沒有筆記。'}</p>
+        <p className="empty">{notes.length ? '沒有符合條件的筆記。' : mode === 'owner' ? '還沒有筆記。' : '目前還沒有公開的筆記。'}</p>
       )}
 
       {groups.map(([ym, list]) => (

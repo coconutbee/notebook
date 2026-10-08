@@ -1,6 +1,16 @@
 {
   "notes": [
     {
+      "path": "notes/工作/Git-基礎觀念.md",
+      "title": "Git 基礎觀念",
+      "date": "",
+      "tags": [
+        "Git"
+      ],
+      "updated": "2026-10-08T07:52:14.550Z",
+      "body": "## 四個區域\n\nWorking Directory → Staging Area → Local Repo ｜ Remote Repo\n\n| 指令 | 方向 |\n| --- | --- |\n| add、mv、rm | Working Directory → Staging Area |\n| reset | Staging Area → Working Directory |\n| commit | Staging Area → Local Repo |\n| push | Local Repo → Remote Repo |\n| fetch | Remote Repo → Local Repo |\n| merge | Local Repo → Working Directory |\n| pull | Remote Repo → Working Directory（= fetch + merge） |\n| clone | Remote Repo → Local Repo |\n| checkout | Local Repo → Working Directory |\n\n## Pull Request\n\n我**請求**（Request）管理者 Pull 到 main branch 上。這個動作提供 discuss & review 的場所。\n\n## Branch name\n\n| 前綴 | 用途 |\n| --- | --- |\n| feature/xxx | 新功能 |\n| fix/xxx | 修 bug |\n| docs/xxx | 文件 |\n\n```bash\ngit switch -c \"branch name\"\n```\n\n## Merge / Rebase\n\n```\n      A - B - C        feature\n     /\nD - E - F - G          main\n```\n\nMerge：\n\n```\n      A - B - C - M\n     /           /\nD - E - F - G ---\n```\n\nRebase：\n\n```\nD - E - F - G - A' - B' - C'\n```\n"
+    },
+    {
       "path": "notes/工作/PFC-回授與-power-feedforward.md",
       "title": "PFC 回授與 power feedforward",
       "date": "",

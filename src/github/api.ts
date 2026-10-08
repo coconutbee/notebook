@@ -30,6 +30,8 @@ const encodePath = (path: string) => path.split('/').map(encodeURIComponent).joi
 
 function humanize(status: number, msg: string): string {
   if (status === 401) return 'Token 無效或已過期，請到「設定」登出後重新輸入。'
+  if (status === 403 && /not accessible by personal access token/i.test(msg))
+    return 'Token 沒有寫入權限：請到 GitHub 編輯 token，把 Repository permissions → Contents 設為「Read and write」。'
   if (status === 403) return `權限不足或已達 API 次數上限（${msg}）`
   if (status === 404) return '找不到 repo 或檔案，請確認 repo 名稱以及 token 是否有該 repo 的權限。'
   return `GitHub 錯誤 ${status}：${msg}`

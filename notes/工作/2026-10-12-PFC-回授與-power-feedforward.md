@@ -6,7 +6,7 @@ tags:
   - 回授
   - power feedforward
 visibility: public
-updated: 2026-10-12T03:27:46.909Z
+updated: 2026-10-12T03:28:14.105Z
 ---
 
 ## 1. 系統架構與問題
@@ -14,7 +14,7 @@ updated: 2026-10-12T03:27:46.909Z
 ```text
 AC ──► PFC（1st 側, MCU）──V_bulk──► DC/DC ──[隔離]──► 2nd 側 ──► Load
               ▲                                         │
-              └──────────── I_o 訊號（前饋）────────────┘
+              └──────────── I_o 訊號（前饋）─────────────┘
 ```
 
 測試條件：Dynamic load 以 100 Hz 在 low / high 之間切換

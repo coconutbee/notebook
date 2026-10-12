@@ -6,7 +6,7 @@ tags:
   - 回授
   - power feedforward
 visibility: public
-updated: 2026-10-12T05:47:57.754Z
+updated: 2026-10-12T05:48:20.884Z
 ---
 
 ## 1. 系統架構與問題
@@ -21,7 +21,7 @@ AC ──► PFC（1st 側, MCU）──V_bulk──► DC/DC ──[隔離]─�
 PFC 的 bulk 電壓上有 120 Hz ripple（60 Hz 市電的兩倍頻）
 負載變動頻率（100 Hz）和 ripple 頻率很接近，傳統控制跟不上
 
-## 2. 傳統回授：只看 V_bulk（慢）
+## 2. 傳統回授：只看 V_bus（慢）
 - loading ↑ → bulk cap 放電、V_bus 下降 → PI 控制器看到 V_bus 掉 → 拉高電流命令補功率
 - 問題在於 PFC 根本不知道負載功率 W_L，只能等 V_bus 掉了才反應
 電壓環頻寬必須遠低於 120 Hz（否則 ripple 會被當成誤差，讓輸入電流失真、PF 變差），所以響應天生很慢

@@ -1,10 +1,11 @@
 import { useMemo } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { Plus, RefreshCw, X } from 'lucide-react'
+import { Plus, RefreshCw, Search, X } from 'lucide-react'
 import { NoteItem } from '../components/NoteItem'
 import { StatusBanner } from '../components/StatusBanner'
 import { monthLabel } from '../lib/date'
 import type { Note } from '../lib/notes'
+import { matchNote, parseQuery } from '../lib/search'
 import { useStore } from '../store'
 
 const UNDATED = 'undated'
@@ -15,6 +16,8 @@ export function NoteList() {
   const cat = params.get('cat')
   const tag = params.get('tag')
   const month = params.get('month')
+  const q = params.get('q') ?? ''
+  const terms = useMemo(() => parseQuery(q), [q])
 
   const setParam = (key: string, value: string | null) => {
     const next = new URLSearchParams(params)
@@ -25,20 +28,24 @@ export function NoteList() {
 
   const months = useMemo(() => [...new Set(notes.map((n) => n.meta.date.slice(0, 7) || UNDATED))], [notes])
 
-  const groups = useMemo(() => {
-    const filtered = notes.filter(
-      (n) =>
-        (!cat || n.category === cat) &&
-        (!tag || n.meta.tags.includes(tag)) &&
-        (!month || (month === UNDATED ? !n.meta.date : n.meta.date.startsWith(month))),
-    )
+  const { groups, snippets } = useMemo(() => {
+    const snippets = new Map<string, string>()
+    const filtered = notes.filter((n) => {
+      if (cat && n.category !== cat) return false
+      if (tag && !n.meta.tags.includes(tag)) return false
+      if (month && (month === UNDATED ? n.meta.date : !n.meta.date.startsWith(month))) return false
+      if (!terms.length) return true
+      const s = matchNote(n, terms)
+      if (s) snippets.set(n.path, s)
+      return s !== null
+    })
     const map = new Map<string, Note[]>()
     for (const n of filtered) {
       const k = n.meta.date.slice(0, 7)
       map.set(k, [...(map.get(k) ?? []), n])
     }
-    return [...map]
-  }, [notes, cat, tag, month])
+    return { groups: [...map], snippets }
+  }, [notes, cat, tag, month, terms])
 
   return (
     <div className="page">
@@ -48,6 +55,18 @@ export function NoteList() {
           <RefreshCw size={20} className={status === 'loading' ? 'spin' : ''} />
         </button>
       </header>
+
+      <div className="search">
+        <Search size={18} aria-hidden className="search-icon" />
+        <input
+          type="search"
+          aria-label="搜尋標題、標籤和內文"
+          placeholder="搜尋標題、標籤和內文"
+          value={q}
+          onChange={(e) => setParam('q', e.target.value)}
+          enterKeyHint="search"
+        />
+      </div>
 
       <div className="chips" role="tablist" aria-label="分類">
         <button role="tab" aria-selected={!cat} className="chip-btn" onClick={() => setParam('cat', null)}>
@@ -85,7 +104,7 @@ export function NoteList() {
       <StatusBanner />
 
       {status !== 'loading' && groups.length === 0 && (
-        <p className="empty">{notes.length ? '沒有符合條件的筆記。' : mode === 'owner' ? '還沒有筆記。' : '目前還沒有公開的筆記。'}</p>
+        <p className="empty">{notes.length ? (q ? `找不到「${q}」相關的筆記。` : '沒有符合條件的筆記。') : mode === 'owner' ? '還沒有筆記。' : '目前還沒有公開的筆記。'}</p>
       )}
 
       {groups.map(([ym, list]) => (
@@ -93,7 +112,7 @@ export function NoteList() {
           <h2 className="group-title">{monthLabel(ym)}</h2>
           <ul className="note-list">
             {list.map((n) => (
-              <NoteItem key={n.path} note={n} showBadge={mode === 'owner'} />
+              <NoteItem key={n.path} note={n} showBadge={mode === 'owner'} snippet={snippets.get(n.path)} terms={terms} />
             ))}
           </ul>
         </section>

@@ -2,6 +2,7 @@ import { Suspense, lazy } from 'react'
 import { HashRouter, Link, Navigate, Route, Routes } from 'react-router-dom'
 import { Nav } from './components/Nav'
 import { ToastProvider } from './components/Toast'
+import { Home } from './pages/Home'
 import { NoteEdit } from './pages/NoteEdit'
 import { NoteList } from './pages/NoteList'
 import { NoteView } from './pages/NoteView'
@@ -21,7 +22,7 @@ function Shell() {
         <Nav />
       ) : (
         <header className="visitor-bar">
-          <Link to="/notes" className="nav-brand">
+          <Link to="/" className="nav-brand">
             {document.title}
           </Link>
           <Link to="/setup" className="btn btn-ghost">
@@ -49,8 +50,9 @@ function Shell() {
               <Route path="/settings" element={<Settings />} />
             </>
           )}
-          {/* 首頁在第 3 階段完成，先導向筆記列表 */}
-          <Route path="*" element={<Navigate to="/notes" replace />} />
+          {/* 訪客的首頁就是公開筆記列表 */}
+          <Route path="/" element={owner ? <Home /> : <NoteList />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
     </div>

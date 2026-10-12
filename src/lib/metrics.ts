@@ -173,3 +173,6 @@ export function summarize(days: MonthData, start: string, end: string): Summary 
     avgBurned: avg(entries.flatMap((e) => (e.exercise ? [totalBurned(e)!] : []))),
   }
 }
+
+/** 體重變化：+0.4 / −0.4 / ±0（用真正的減號） */
+export const signedKg = (v: number) => `${v > 0 ? '+' : v < 0 ? '−' : '±'}${Math.abs(v)} kg`

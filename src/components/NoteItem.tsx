@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { Globe, Lock } from 'lucide-react'
 import { encodeNotePath, type Note } from '../lib/notes'
+import { splitHighlight } from '../lib/search'
 
 export function VisibilityBadge({ note }: { note: Note }) {
   return note.meta.visibility === 'public' ? (
@@ -14,12 +15,19 @@ export function VisibilityBadge({ note }: { note: Note }) {
   )
 }
 
-export function NoteItem({ note, showBadge }: { note: Note; showBadge: boolean }) {
+function Highlight({ text, terms }: { text: string; terms: string[] }) {
+  return <>{splitHighlight(text, terms).map((part, i) => (i % 2 ? <mark key={i}>{part}</mark> : part))}</>
+}
+
+/** snippet / terms：搜尋時顯示命中的片段並標亮關鍵字 */
+export function NoteItem({ note, showBadge, snippet, terms = [] }: { note: Note; showBadge: boolean; snippet?: string; terms?: string[] }) {
   return (
     <li>
       <Link to={`/note/${encodeNotePath(note.path)}`} className="note-item">
         <div className="note-item-top">
-          <span className="note-title">{note.meta.title}</span>
+          <span className="note-title">
+            <Highlight text={note.meta.title} terms={terms} />
+          </span>
           {note.meta.date && <time className="muted small">{note.meta.date.slice(5).replace('-', '/')}</time>}
         </div>
         <div className="note-item-meta small muted">
@@ -29,6 +37,11 @@ export function NoteItem({ note, showBadge }: { note: Note; showBadge: boolean }
           ))}
           {showBadge && <VisibilityBadge note={note} />}
         </div>
+        {snippet && (
+          <p className="note-snippet small">
+            <Highlight text={snippet} terms={terms} />
+          </p>
+        )}
       </Link>
     </li>
   )

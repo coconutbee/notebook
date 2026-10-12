@@ -296,3 +296,32 @@ input[aria-invalid='true'] { border-color: var(--danger); }
 .table-view table { width: 100%; border-collapse: collapse; font-size: 0.875rem; font-variant-numeric: tabular-nums; }
 .table-view th, .table-view td { padding: 6px 8px; border-bottom: 1px solid var(--border); text-align: right; white-space: nowrap; }
 .table-view th[scope='row'], .table-view thead th:first-child { text-align: left; font-weight: 500; }
+
+/* ---------- 搜尋 ---------- */
+.search { position: relative; margin-bottom: 8px; }
+.search input { padding-left: 38px; }
+.search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--muted); pointer-events: none; }
+.note-snippet { margin: 6px 0 0; color: var(--muted); line-height: 1.5; }
+mark { background: var(--primary-soft); color: var(--fg); border-radius: 3px; padding: 0 2px; font-weight: 600; }
+
+/* ---------- 首頁 ---------- */
+.section-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 24px 0 8px; }
+.section-head h2 { margin: 0; }
+h2.section-head { display: block; }
+.more { display: inline-flex; align-items: center; min-height: 44px; color: var(--primary); text-decoration: none; font-size: 0.9rem; }
+.diary-preview { margin: 0 0 12px; line-height: 1.6; }
+.cat-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+@media (min-width: 640px) { .cat-grid { grid-template-columns: repeat(4, 1fr); } }
+.cat-tile {
+  display: flex; flex-direction: column; gap: 2px; padding: 12px 14px; min-height: 44px;
+  background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+  color: var(--fg); text-decoration: none; font-weight: 600;
+}
+.cat-tile:hover { border-color: var(--primary); }
+
+/* ---------- 分類管理 ---------- */
+.cat-list { list-style: none; margin: 0 0 12px; padding: 0; }
+.cat-list li { display: flex; align-items: center; gap: 2px; border-bottom: 1px solid var(--border); }
+.cat-name { flex: 1; min-width: 0; padding: 8px 0; overflow-wrap: anywhere; }
+.cat-add { display: flex; gap: 8px; }
+.cat-add .btn { flex: none; }

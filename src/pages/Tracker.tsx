@@ -10,6 +10,7 @@ import {
   addDays,
   buildSeries,
   rangeStart,
+  signedKg,
   summarize,
   totalBurned,
   type DayEntry,
@@ -351,9 +352,7 @@ export function Tracker() {
           <div>
             <dt>體重變化</dt>
             <dd>
-              {summary.weightChange != null
-                ? `${summary.weightChange > 0 ? '+' : summary.weightChange < 0 ? '−' : '±'}${Math.abs(summary.weightChange)} kg`
-                : '—'}
+{summary.weightChange != null ? signedKg(summary.weightChange) : '—'}
             </dd>
           </div>
           <div>

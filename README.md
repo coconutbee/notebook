@@ -32,7 +32,10 @@
 config.json                       分類設定：{ "categories": [...], "diaryCategory": "日記" }
 notes/<分類>/<日期>-<標題>.md     筆記；日期可省略，例如 notes/工作/Git-基礎觀念.md
 metrics/<年-月>.json              追蹤記錄，以日期為 key
+images/<年-月>/<亂數>.jpg         筆記裡的圖片
 ```
+
+圖片在編輯器用「插入圖片」、貼上或拖曳上傳。上傳前會自動縮到長邊 1600px 的 JPEG；本來就小的截圖和 GIF 會保留原檔。筆記裡的寫法是 `![說明](../../images/2026-10/xxxx.jpg)`，在 GitHub 上直接看筆記也能顯示。公開筆記用到的圖片會一起同步到 `public-notes`。沒有任何筆記使用的圖片不會自動刪除，可以到「設定 → 清理未使用的圖片」手動清理。
 
 筆記開頭是 YAML front matter：
 

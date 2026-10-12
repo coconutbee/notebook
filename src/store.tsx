@@ -9,7 +9,8 @@ import { stringifyNote, type NoteMeta } from './lib/frontmatter'
 import { NOTE_RE, buildNote, notePath, sortNotes, type Note } from './lib/notes'
 import { METRICS_RE, stringifyMonth, type DayEntry, type MonthData } from './lib/metrics'
 import { toMonthFile, writeDay, type MonthFile } from './lib/metricsSync'
-import { hasPublic, loadPublicNotes, syncPublic } from './lib/publish'
+import { IMAGE_RE, imageMarkdown, imagePath, mimeOf, prepareImage, toRepoPath } from './lib/images'
+import { hasPublic, loadPublicNotes, syncPublic, type ImageSource } from './lib/publish'
 
 export interface SaveInput {
   category: string
@@ -51,6 +52,13 @@ interface Store {
    * 檔案在別處被改過時，若別處沒動到這一天就自動合併；動到了就丟出 DayConflictError
    */
   saveDay(date: string, entry: DayEntry | null, base: DayEntry | null): Promise<void>
+  /** 資料 repo 裡所有圖片：路徑 → sha */
+  images: Map<string, string>
+  /** 縮圖後上傳，回傳要插入筆記的 Markdown */
+  uploadImage(file: File): Promise<string>
+  /** 筆記裡的圖片網址 → 可以放進 <img src> 的網址 */
+  imageSrc(src: string): Promise<string>
+  deleteImage(path: string): Promise<void>
 }
 
 const Ctx = createContext<Store | null>(null)
@@ -87,6 +95,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<Store['status']>('loading')
   const [error, setError] = useState<string | null>(null)
   const [metrics, setMetrics] = useState<Record<string, MonthFile>>({})
+  const [images, setImages] = useState<Map<string, string>>(new Map())
+  const imagesRef = useRef(images)
+  const commitImages = useCallback((next: Map<string, string>) => {
+    imagesRef.current = next
+    setImages(next)
+  }, [])
   const metricsRef = useRef<Record<string, MonthFile>>({})
 
   const commitMonth = useCallback((month: string, file: MonthFile) => {
@@ -141,6 +155,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           configRef.current = { config: DEFAULT_CONFIG, sha }
         }
         setConfig(configRef.current.config)
+        commitImages(new Map(files.filter((f) => IMAGE_RE.test(f.path)).map((f) => [f.path, f.sha])))
         const noteFiles = files.filter((f) => NOTE_RE.test(f.path))
         const loaded = await mapPool(noteFiles, 6, async (f) => buildNote(f.path, f.sha, await readBlob(f.sha)))
         commit(sortNotes(loaded.filter((n): n is Note => !!n)))
@@ -161,7 +176,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setError(errorMessage(e))
       setStatus('error')
     }
-  }, [github, readBlob, commit])
+  }, [github, readBlob, commit, commitImages])
 
   useEffect(() => {
     void reload()
@@ -172,15 +187,27 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     return github ? [...config.categories, ...new Set(extra)] : [...new Set(notes.map((n) => n.category))]
   }, [notes, config, github])
 
+  const readImage = useCallback(
+    async (sha: string) => {
+      const cached = await cacheGet(sha)
+      if (cached !== undefined) return cached
+      const b64 = await need().data.getBlobBase64(sha)
+      await cacheSet(sha, b64)
+      return b64
+    },
+    [need],
+  )
+  const imageSource = useCallback((): ImageSource => ({ shas: imagesRef.current, read: readImage }), [readImage])
+
   const publish = useCallback(
     async (next: Note[]): Promise<string | undefined> => {
       try {
-        await syncPublic(need().pub, next)
+        await syncPublic(need().pub, next, imageSource())
       } catch (e) {
         return `筆記已儲存，但同步到公開 repo 失敗：${errorMessage(e)}（可到「設定」重新同步）`
       }
     },
-    [need],
+    [need, imageSource],
   )
 
   const fetchLatest = useCallback(
@@ -307,7 +334,44 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [need, saveConfig, commit, publish],
   )
 
-  const republish = useCallback(() => syncPublic(need().pub, notesRef.current), [need])
+  const republish = useCallback(() => syncPublic(need().pub, notesRef.current, imageSource()), [need, imageSource])
+
+  const uploadImage = useCallback(
+    async (file: File) => {
+      const { base64, ext } = await prepareImage(file)
+      const path = imagePath(ext)
+      const sha = await need().data.putBase64(path, base64, `上傳圖片：${file.name}`)
+      await cacheSet(sha, base64)
+      commitImages(new Map(imagesRef.current).set(path, sha))
+      return imageMarkdown(file.name.replace(/\.[^.]+$/, ''), path)
+    },
+    [need, commitImages],
+  )
+
+  const imageSrc = useCallback(
+    async (src: string) => {
+      const path = toRepoPath(src)
+      if (!path) return src
+      // 訪客：公開分支的圖片可以直接從 raw.githubusercontent.com 讀
+      if (!github) return `https://raw.githubusercontent.com/${OWNER}/${PUBLIC_REPO}/${PUBLIC_BRANCH}/${path}`
+      const sha = imagesRef.current.get(path)
+      if (!sha) throw new Error(`找不到圖片 ${path}`)
+      return `data:${mimeOf(path)};base64,${await readImage(sha)}`
+    },
+    [github, readImage],
+  )
+
+  const deleteImage = useCallback(
+    async (path: string) => {
+      const sha = imagesRef.current.get(path)
+      if (!sha) return
+      await need().data.deleteFile(path, sha, `刪除未使用的圖片：${path}`)
+      const next = new Map(imagesRef.current)
+      next.delete(path)
+      commitImages(next)
+    },
+    [need, commitImages],
+  )
 
   const days = useMemo(() => Object.assign({}, ...Object.values(metrics).map((m) => m.data)) as MonthData, [metrics])
 
@@ -340,6 +404,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     metrics,
     days,
     saveDay,
+    images,
+    uploadImage,
+    imageSrc,
+    deleteImage,
   }
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }

@@ -206,7 +206,8 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--primary); o
 
 /* ---------- Markdown ---------- */
 .markdown { line-height: 1.75; overflow-wrap: anywhere; }
-.markdown img { max-width: 100%; }
+.markdown img { max-width: 100%; height: auto; border-radius: 8px; display: block; margin: 8px 0; }
+.img-note { display: inline-block; padding: 8px 0; }
 .markdown pre { background: var(--card); border: 1px solid var(--border); padding: 12px; border-radius: 8px; overflow-x: auto; }
 .markdown pre code { background: none; padding: 0; }
 .markdown blockquote { margin: 0; padding-left: 12px; border-left: 3px solid var(--primary); color: var(--muted); }
@@ -325,3 +326,7 @@ h2.section-head { display: block; }
 .cat-name { flex: 1; min-width: 0; padding: 8px 0; overflow-wrap: anywhere; }
 .cat-add { display: flex; gap: 8px; }
 .cat-add .btn { flex: none; }
+
+/* ---------- 編輯器工具列 ---------- */
+.editor-toolbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }
+.editor-toolbar .btn { padding: 0 10px; }

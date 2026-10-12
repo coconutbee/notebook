@@ -1,6 +1,7 @@
 import { gitBlobSha } from '../github/base64'
 import type { GitHub } from '../github/api'
 import { OWNER, PUBLIC_BRANCH, PUBLIC_REPO } from '../config'
+import { imageRefs } from './images'
 import { buildNote, sortNotes, type Note } from './notes'
 
 interface PublicEntry {
@@ -25,19 +26,32 @@ export const hasPublic = (notes: (Note | null | undefined)[]) => notes.some((n) 
  * 缺的補上、內容不同的更新、不該公開的刪除，最後更新 index.json。
  * 私人 repo 與公開 repo 的同一份內容 blob sha 相同，所以沒變的檔案不會重寫。
  */
-export async function syncPublic(pub: GitHub, notes: Note[]): Promise<void> {
+export interface ImageSource {
+  /** 資料 repo 裡所有圖片：路徑 → sha */
+  shas: Map<string, string>
+  read(sha: string): Promise<string>
+}
+
+/** 公開筆記引用到的圖片也一併複製；不再被公開筆記引用的圖片會從公開分支移除 */
+export async function syncPublic(pub: GitHub, notes: Note[], images?: ImageSource): Promise<void> {
   const desired = sortNotes(notes.filter((n) => n.meta.visibility === 'public'))
   await pub.ensureBranch(PUBLIC_README)
   const existing = new Map((await pub.listFiles()).map((f) => [f.path, f.sha]))
   const wanted = new Set(desired.map((n) => n.path))
+  const wantedImages = new Set(desired.flatMap((n) => imageRefs(n.body)).filter((p) => images?.shas.has(p)))
 
   // GitHub 不允許同一分支同時寫入，所以逐一進行
   for (const n of desired) {
     const sha = existing.get(n.path)
     if (sha !== n.sha) await pub.putFile(n.path, n.raw, `發布：${n.meta.title}`, sha)
   }
+  for (const path of wantedImages) {
+    const sha = images!.shas.get(path)!
+    if (existing.get(path) !== sha) await pub.putBase64(path, await images!.read(sha), `發布圖片：${path}`, existing.get(path))
+  }
   for (const [path, sha] of existing) {
-    if (path.startsWith('notes/') && !wanted.has(path)) await pub.deleteFile(path, sha, `取消發布：${path}`)
+    if ((path.startsWith('notes/') && !wanted.has(path)) || (images && path.startsWith('images/') && !wantedImages.has(path)))
+      await pub.deleteFile(path, sha, `取消發布：${path}`)
   }
 
   const entries: PublicEntry[] = desired.map((n) => ({

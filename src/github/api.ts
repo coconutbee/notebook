@@ -102,8 +102,13 @@ export class GitHub {
   }
 
   async getBlob(sha: string): Promise<string> {
+    return decodeBase64(await this.getBlobBase64(sha))
+  }
+
+  /** 二進位檔（圖片）用：回傳原始 base64 */
+  async getBlobBase64(sha: string): Promise<string> {
     const data = await this.req('GET', `/git/blobs/${sha}`)
-    return decodeBase64(data.content)
+    return (data.content as string).replace(/\s/g, '')
   }
 
   /** 讀取單一檔案；不存在回傳 null */
@@ -118,11 +123,16 @@ export class GitHub {
   }
 
   /** 新增（不帶 sha）或更新（帶讀取時的 sha）。sha 不符時丟出 ConflictError，絕不覆蓋 */
-  async putFile(path: string, text: string, message: string, sha?: string): Promise<string> {
+  putFile(path: string, text: string, message: string, sha?: string): Promise<string> {
+    return this.putBase64(path, encodeBase64(text), message, sha)
+  }
+
+  /** 同 putFile，內容是 base64（圖片等二進位檔） */
+  async putBase64(path: string, content: string, message: string, sha?: string): Promise<string> {
     const data = await this.req(
       'PUT',
       `/contents/${encodePath(path)}`,
-      { message, content: encodeBase64(text), ...(sha ? { sha } : {}), ...this.branchBody },
+      { message, content, ...(sha ? { sha } : {}), ...this.branchBody },
       path,
     )
     return data.content.sha

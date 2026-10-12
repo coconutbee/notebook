@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { ArrowDown, ArrowUp, Pencil, Plus, Trash2 } from 'lucide-react'
 import { categoryError } from '../lib/config'
+import { imageRefs } from '../lib/images'
 import { DATA_REPO, OWNER, PUBLIC_BRANCH, PUBLIC_REPO } from '../config'
 import { useToast } from '../components/Toast'
 import { errorMessage } from '../github/api'
@@ -148,10 +149,22 @@ function CategoryManager() {
 }
 
 export function Settings() {
-  const { notes, reload, republish } = useStore()
+  const { notes, reload, republish, images, deleteImage } = useStore()
   const toast = useToast()
   const [busy, setBusy] = useState(false)
   const publicCount = notes.filter((n) => n.meta.visibility === 'public').length
+  const used = new Set(notes.flatMap((n) => imageRefs(n.body)))
+  const unused = [...images.keys()].filter((p) => !used.has(p))
+
+  function cleanImages() {
+    const msg =
+      `以下 ${unused.length} 張圖片沒有被任何已儲存的筆記使用：\n\n${unused.join('\n')}\n\n` +
+      '注意：還沒儲存的草稿裡的圖片也算在內。刪除後仍可從 notebook-data 的 git 歷史找回。確定刪除嗎？'
+    if (!confirm(msg)) return
+    void run(async () => {
+      for (const p of unused) await deleteImage(p)
+    }, `已刪除 ${unused.length} 張未使用的圖片`)
+  }
 
   async function run(fn: () => Promise<void>, done: string) {
     setBusy(true)
@@ -208,7 +221,11 @@ export function Settings() {
           <button className="btn" disabled={busy} onClick={() => run(async () => { await cacheClear(); await reload() }, '已清除快取')}>
             清除本機快取
           </button>
+          <button className="btn" disabled={busy || !unused.length} onClick={cleanImages}>
+            清理未使用的圖片{unused.length ? `（${unused.length} 張）` : ''}
+          </button>
         </div>
+        <p className="small muted">共 {images.size} 張圖片。</p>
       </section>
 
       <CategoryManager />

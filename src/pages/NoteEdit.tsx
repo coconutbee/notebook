@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, Globe, Lock } from 'lucide-react'
+import { ArrowLeft, Globe, ImagePlus, Lock } from 'lucide-react'
 import { ConflictDialog } from '../components/ConflictDialog'
 import { MarkdownView } from '../components/MarkdownView'
 import { TagInput } from '../components/TagInput'
@@ -39,7 +39,7 @@ const toInput = (f: Form, titleSuffix = ''): SaveInput => ({
 export function NoteEdit() {
   const editPath = useParams()['*']
   const [params] = useSearchParams()
-  const { notes, categories, config, status, saveNote, fetchLatest } = useStore()
+  const { notes, categories, config, status, saveNote, fetchLatest, uploadImage } = useStore()
   const navigate = useNavigate()
   const toast = useToast()
 
@@ -56,6 +56,9 @@ export function NoteEdit() {
   const [busy, setBusy] = useState(false)
   const [conflict, setConflict] = useState<ConflictError | null>(null)
   const initialized = useRef(false)
+  const editorRef = useRef<HTMLTextAreaElement>(null)
+  const fileRef = useRef<HTMLInputElement>(null)
+  const [uploading, setUploading] = useState<string | null>(null)
 
   // 初始化：等筆記載入後填入表單，並詢問是否還原草稿
   useEffect(() => {
@@ -131,6 +134,28 @@ export function NoteEdit() {
     setDirty(true)
   }
 
+  /** 逐張上傳，每張成功就插入游標位置（失敗的那張之前的都會保留） */
+  async function addImages(files: File[]) {
+    const imgs = files.filter((f) => f.type.startsWith('image/'))
+    if (!imgs.length || uploading) return
+    let pos = editorRef.current?.selectionEnd ?? form!.body.length
+    try {
+      for (const [i, file] of imgs.entries()) {
+        setUploading(imgs.length > 1 ? `上傳圖片 ${i + 1}/${imgs.length}…` : '上傳圖片中…')
+        const md = await uploadImage(file)
+        const text = `\n${md}\n`
+        const at = pos
+        pos += text.length
+        setForm((f) => ({ ...f!, body: f!.body.slice(0, at) + text + f!.body.slice(at) }))
+        setDirty(true)
+      }
+    } catch (e) {
+      toast(`圖片上傳失敗：${errorMessage(e)}`, 'error')
+    } finally {
+      setUploading(null)
+    }
+  }
+
   async function save(asCopy = false) {
     if (!form) return
     setBusy(true)
@@ -198,7 +223,7 @@ export function NoteEdit() {
           <ArrowLeft size={22} />
         </button>
         <h1 className="header-title">{original ? '編輯筆記' : '新增筆記'}</h1>
-        <button className="btn btn-primary" onClick={() => save()} disabled={busy || !form.title.trim()}>
+        <button className="btn btn-primary" onClick={() => save()} disabled={busy || !!uploading || !form.title.trim()}>
           {busy ? '儲存中…' : '儲存'}
         </button>
       </header>
@@ -249,8 +274,43 @@ export function NoteEdit() {
           預覽
         </button>
       </div>
+      <div className="editor-toolbar">
+        <button type="button" className="btn btn-ghost" onClick={() => fileRef.current?.click()} disabled={!!uploading}>
+          <ImagePlus size={18} aria-hidden /> 插入圖片
+        </button>
+        <span className="muted small" role="status">
+          {uploading ?? '也可以直接貼上或拖曳圖片'}
+        </span>
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/*"
+          multiple
+          hidden
+          onChange={(e) => {
+            void addImages([...(e.target.files ?? [])])
+            e.target.value = ''
+          }}
+        />
+      </div>
       <div className={`editor-split show-${tab}`}>
         <textarea
+          ref={editorRef}
+          onPaste={(e) => {
+            const files = [...e.clipboardData.files]
+            if (files.some((f) => f.type.startsWith('image/'))) {
+              e.preventDefault()
+              void addImages(files)
+            }
+          }}
+          onDragOver={(e) => e.preventDefault()}
+          onDrop={(e) => {
+            const files = [...e.dataTransfer.files]
+            if (files.length) {
+              e.preventDefault()
+              void addImages(files)
+            }
+          }}
           className="editor"
           aria-label="內容（Markdown）"
           value={form.body}

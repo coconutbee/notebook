@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { Plus, RefreshCw, Search, X } from 'lucide-react'
+import { CategoryList, TagBars } from '../components/Browse'
 import { categoryStyle } from '../components/Category'
 import { NoteItem } from '../components/NoteItem'
 import { StatusBanner } from '../components/StatusBanner'
@@ -48,8 +49,12 @@ export function NoteList() {
     return { groups: [...map], snippets }
   }, [notes, cat, tag, month, terms])
 
+  const catNotes = useMemo(() => (cat ? notes.filter((n) => n.category === cat) : notes), [notes, cat])
+  const tagTitle = `標籤分布${cat ? `・${cat}` : ''}`
+  const tagBars = <TagBars notes={catNotes} current={tag} onPick={(t) => setParam('tag', t)} />
+
   return (
-    <div className="page">
+    <div className="page page-browse">
       {mode === 'owner' ? (
         <header className="page-header">
           <h1>筆記</h1>
@@ -80,6 +85,15 @@ export function NoteList() {
         </header>
       )}
 
+      <div className="browse-layout">
+      {/* 寬螢幕：左側分類清單與標籤分布；手機改用下方的分類 chips 與可展開的標籤分布 */}
+      <aside className="browse">
+        <CategoryList notes={notes} categories={categories} current={cat} onPick={(c) => setParam('cat', c)} />
+        <h2 className="browse-title">{tagTitle}</h2>
+        {tagBars}
+      </aside>
+      <div className="browse-main">
+
       <div className="search">
         <Search size={18} aria-hidden className="search-icon" />
         <input
@@ -106,6 +120,14 @@ export function NoteList() {
           )
         })}
       </div>
+
+      <details className="tag-panel">
+        <summary>
+          {tagTitle}
+          {tag && <span className="muted small">（目前：#{tag}）</span>}
+        </summary>
+        {tagBars}
+      </details>
 
       <div className="filters">
         <label className="sr-only" htmlFor="month">
@@ -145,6 +167,8 @@ export function NoteList() {
           </ul>
         </section>
       ))}
+      </div>
+      </div>
 
       {mode === 'owner' && (
         <Link to={cat ? `/new?cat=${encodeURIComponent(cat)}` : '/new'} className="fab" aria-label="新增筆記">

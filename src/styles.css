@@ -448,3 +448,48 @@ h2.section-head { display: block; }
 /* 側欄品牌與選中項目 */
 .nav-item.active { background: var(--primary-soft); }
 @media (max-width: 899px) { .nav-item.active { background: none; } }
+
+/* ---------- 瀏覽側欄：分類清單 + 標籤分布 ---------- */
+.browse { display: none; }
+.browse-title { font-size: 0.8125rem; font-weight: 700; color: var(--muted); letter-spacing: 0.04em; margin: 0 0 8px; }
+.browse-section { margin-bottom: 20px; }
+.cat-nav { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.cat-nav button {
+  display: flex; align-items: center; gap: 10px; width: 100%; min-height: 44px; padding: 0 10px;
+  border: 0; border-radius: 10px; background: none; text-align: left; transition: background-color 150ms;
+}
+.cat-nav button:hover { background: var(--code-bg); }
+.cat-nav button[aria-current='true'] { background: var(--primary-soft); font-weight: 600; }
+.cat-nav-icon {
+  display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; flex: none;
+  border-radius: 8px; color: var(--hue-fg); background: var(--hue-bg);
+}
+.cat-nav-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cat-nav-count { font-size: 0.8125rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+/* 標籤分布橫條：單一系列、單一色；數字用文字色 */
+.tag-bars { list-style: none; margin: 0 0 4px; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.tag-bars button {
+  display: grid; grid-template-columns: minmax(0, 7.5em) 1fr 2em; align-items: center; gap: 8px;
+  width: 100%; min-height: 36px; padding: 0 8px; border: 0; border-radius: 8px; background: none; text-align: left;
+  font-size: 0.875rem; transition: background-color 150ms;
+}
+.tag-bars button:hover { background: var(--code-bg); }
+.tag-bars button[aria-pressed='true'] { background: var(--primary-soft); font-weight: 600; }
+.tag-bars-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tag-bars-track { height: 8px; border-radius: 4px; background: var(--code-bg); overflow: hidden; }
+.tag-bars-fill { display: block; height: 100%; min-width: 4px; border-radius: 4px; background: var(--primary); }
+.tag-bars-count { text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+/* 手機：可展開的標籤分布 */
+.tag-panel { margin-bottom: 8px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--card); padding: 0 12px; }
+.tag-panel summary { min-height: 44px; display: flex; align-items: center; gap: 6px; cursor: pointer; font-weight: 600; }
+.tag-panel[open] { padding-bottom: 8px; }
+
+@media (min-width: 1000px) {
+  .page-browse { max-width: 1100px; }
+  .browse-layout { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 28px; align-items: start; }
+  .browse { display: block; position: sticky; top: 16px; max-height: calc(100vh - 32px); overflow-y: auto; padding-right: 4px; }
+  .app.visitor .browse { top: 76px; max-height: calc(100vh - 92px); }
+  .browse-main .chips, .browse-main .tag-panel { display: none; }
+}

@@ -6,7 +6,7 @@ tags:
   - 回授
   - power feedforward
 visibility: public
-updated: 2026-10-12T03:28:14.105Z
+updated: 2026-10-12T03:30:07.882Z
 ---
 
 ## 1. 系統架構與問題
@@ -42,7 +42,7 @@ PFC 的 bulk 電壓上有 120 Hz ripple（60 Hz 市電的兩倍頻）
 ## 5. 依負載變動頻率分工
 |負載變動|處理方式|原因|
 |---------|-------|-----|
-|低頻（約 50 Hz 以上到數百 Hz）|	PFC 開啟 |power feedforward	bulk 電壓擺動大；載卸時沒有提前調整，V_bulk 容易衝過頭觸發 OVP（或掉太多UVP）|
+|低頻（約 50 Hz 以上到數百 Hz）|	PFC 開啟power feedforward	bulk 電壓擺動大|載卸時沒有提前調整，V_bulk 容易衝過頭觸發 OVP（或掉太多UVP）|
 |高頻（約 10 kHz）|F.W. bypass power feedforward|每個週期的能量很小，bulk cap 自己吸收得了，bus 自動調節；這時前饋反而會讓 PFC 跟著亂抖
 
 ## 6. PFFD 訊號的低通濾波

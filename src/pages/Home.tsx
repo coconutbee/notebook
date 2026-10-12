@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
-import { ChevronRight, PenLine } from 'lucide-react'
+import { Activity, ChevronRight, Flame, PenLine, Plus, Scale, TrendingDown, Utensils } from 'lucide-react'
+import { categoryStyle } from '../components/Category'
 import { NoteItem } from '../components/NoteItem'
 import { StatusBanner } from '../components/StatusBanner'
 import { toDateStr } from '../lib/date'
@@ -20,38 +21,36 @@ export function Home() {
     [notes],
   )
   const preview = diary?.body.replace(/\s+/g, ' ').trim().slice(0, 120)
+  const hour = new Date().getHours()
+  const greeting = hour < 5 ? '夜深了' : hour < 11 ? '早安' : hour < 14 ? '午安' : hour < 18 ? '下午好' : '晚安'
+  const diaryLink = diary
+    ? `/edit/${encodeNotePath(diary.path)}`
+    : `/new?cat=${encodeURIComponent(config.diaryCategory)}`
 
   return (
     <div className="page">
-      <header className="page-header">
-        <h1>
-          {Number(today.slice(5, 7))} 月 {Number(today.slice(8))} 日
-          <span className="muted small"> 星期{'日一二三四五六'[new Date().getDay()]}</span>
-        </h1>
-      </header>
+      <section className="welcome">
+        <p className="welcome-date">
+          {Number(today.slice(5, 7))} 月 {Number(today.slice(8))} 日・星期{'日一二三四五六'[new Date().getDay()]}
+        </p>
+        <h1>{greeting}</h1>
+        <p className="welcome-sub">
+          {diary ? (preview ? `今天的${config.diaryCategory}：${preview}` : `今天的${config.diaryCategory}還沒有內容`) : `今天還沒寫${config.diaryCategory}，花幾分鐘記錄一下吧。`}
+        </p>
+        <div className="welcome-actions">
+          <Link className="btn btn-light" to={diaryLink}>
+            <PenLine size={18} aria-hidden /> {diary ? `繼續寫${config.diaryCategory}` : `寫今天的${config.diaryCategory}`}
+          </Link>
+          <Link className="btn btn-glass" to="/new">
+            <Plus size={18} aria-hidden /> 新筆記
+          </Link>
+          <Link className="btn btn-glass" to="/track">
+            <Activity size={18} aria-hidden /> 記錄今天
+          </Link>
+        </div>
+      </section>
 
       <StatusBanner />
-
-      <section className="card">
-        <h2>今天的{config.diaryCategory}</h2>
-        {diary ? (
-          <>
-            <p className="diary-preview">{preview || <span className="muted">（還沒有內容）</span>}</p>
-            <div className="btn-row">
-              <Link className="btn" to={`/note/${encodeNotePath(diary.path)}`}>
-                閱讀
-              </Link>
-              <Link className="btn btn-primary" to={`/edit/${encodeNotePath(diary.path)}`}>
-                <PenLine size={18} aria-hidden /> 繼續寫
-              </Link>
-            </div>
-          </>
-        ) : (
-          <Link className="btn btn-primary" to={`/new?cat=${encodeURIComponent(config.diaryCategory)}`}>
-            <PenLine size={18} aria-hidden /> 寫今天的{config.diaryCategory}
-          </Link>
-        )}
-      </section>
 
       <section>
         <div className="section-head">
@@ -60,21 +59,29 @@ export function Home() {
             追蹤 <ChevronRight size={16} aria-hidden />
           </Link>
         </div>
-        <dl className="stats">
+        <dl className="stats stats-icons">
           <div>
-            <dt>最新體重</dt>
+            <dt>
+              <Scale size={16} aria-hidden /> 最新體重
+            </dt>
             <dd>{week.latestWeight != null ? `${week.latestWeight} kg` : '—'}</dd>
           </div>
           <div>
-            <dt>體重變化</dt>
+            <dt>
+              <TrendingDown size={16} aria-hidden /> 體重變化
+            </dt>
             <dd>{week.weightChange != null ? signedKg(week.weightChange) : '—'}</dd>
           </div>
           <div>
-            <dt>平均攝取</dt>
+            <dt>
+              <Utensils size={16} aria-hidden /> 平均攝取
+            </dt>
             <dd>{week.avgIntake != null ? `${Math.round(week.avgIntake).toLocaleString()} kcal` : '—'}</dd>
           </div>
           <div>
-            <dt>平均運動消耗</dt>
+            <dt>
+              <Flame size={16} aria-hidden /> 平均運動消耗
+            </dt>
             <dd>{week.avgBurned != null ? `${Math.round(week.avgBurned).toLocaleString()} kcal` : '—'}</dd>
           </div>
         </dl>
@@ -102,12 +109,18 @@ export function Home() {
       <section>
         <h2 className="section-head">分類</h2>
         <div className="cat-grid">
-          {categories.map((c) => (
-            <Link key={c} to={`/notes?cat=${encodeURIComponent(c)}`} className="cat-tile">
-              <span>{c}</span>
-              <span className="muted small">{notes.filter((n) => n.category === c).length} 篇</span>
-            </Link>
-          ))}
+          {categories.map((c) => {
+            const { hue, Icon } = categoryStyle(c)
+            return (
+              <Link key={c} to={`/notes?cat=${encodeURIComponent(c)}`} className={`cat-tile ${hue}`}>
+                <span className="cat-icon">
+                  <Icon size={20} aria-hidden />
+                </span>
+                <span>{c}</span>
+                <span className="muted small">{notes.filter((n) => n.category === c).length} 篇</span>
+              </Link>
+            )
+          })}
         </div>
       </section>
     </div>

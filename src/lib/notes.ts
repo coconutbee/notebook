@@ -46,5 +46,18 @@ export function sortNotes(notes: Note[]): Note[] {
   )
 }
 
+/** 列表用的純文字摘要：去掉程式碼、圖片和 Markdown 符號 */
+export function excerpt(body: string, max = 90): string {
+  const text = body
+    .replace(/```[\s\S]*?```/g, ' ')
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, ' ')
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
+    .replace(/^\s{0,3}(#{1,6}|>|[-*+]|\d+\.)\s+/gm, '')
+    .replace(/[*_`~|]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+  return text.length > max ? `${text.slice(0, max)}…` : text
+}
+
 /** 給路由用：每段分別編碼，保留 / */
 export const encodeNotePath = (path: string) => path.split('/').map(encodeURIComponent).join('/')

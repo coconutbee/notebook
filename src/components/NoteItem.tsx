@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { Globe, Lock } from 'lucide-react'
-import { encodeNotePath, type Note } from '../lib/notes'
+import { encodeNotePath, excerpt, type Note } from '../lib/notes'
+import { CategoryBadge, categoryStyle } from './Category'
 import { splitHighlight } from '../lib/search'
 
 export function VisibilityBadge({ note }: { note: Note }) {
@@ -21,26 +22,29 @@ function Highlight({ text, terms }: { text: string; terms: string[] }) {
 
 /** snippet / terms：搜尋時顯示命中的片段並標亮關鍵字 */
 export function NoteItem({ note, showBadge, snippet, terms = [] }: { note: Note; showBadge: boolean; snippet?: string; terms?: string[] }) {
+  const summary = snippet || excerpt(note.body)
   return (
     <li>
-      <Link to={`/note/${encodeNotePath(note.path)}`} className="note-item">
+      <Link to={`/note/${encodeNotePath(note.path)}`} className={`note-item ${categoryStyle(note.category).hue}`}>
         <div className="note-item-top">
-          <span className="note-title">
-            <Highlight text={note.meta.title} terms={terms} />
-          </span>
+          <CategoryBadge name={note.category} />
           {note.meta.date && <time className="muted small">{note.meta.date.slice(5).replace('-', '/')}</time>}
         </div>
-        <div className="note-item-meta small muted">
-          <span>{note.category}</span>
-          {note.meta.tags.map((t) => (
-            <span key={t}>#{t}</span>
-          ))}
-          {showBadge && <VisibilityBadge note={note} />}
-        </div>
-        {snippet && (
+        <span className="note-title">
+          <Highlight text={note.meta.title} terms={terms} />
+        </span>
+        {summary && (
           <p className="note-snippet small">
-            <Highlight text={snippet} terms={terms} />
+            <Highlight text={summary} terms={terms} />
           </p>
+        )}
+        {(note.meta.tags.length > 0 || showBadge) && (
+          <div className="note-item-meta small muted">
+            {note.meta.tags.map((t) => (
+              <span key={t}>#{t}</span>
+            ))}
+            {showBadge && <VisibilityBadge note={note} />}
+          </div>
         )}
       </Link>
     </li>

@@ -23,6 +23,11 @@ function Shell() {
       ) : (
         <header className="visitor-bar">
           <Link to="/" className="nav-brand">
+            <svg className="brand-mark" viewBox="0 0 32 32" aria-hidden>
+              <rect x="5" y="3" width="22" height="26" rx="3" fill="var(--primary)" />
+              <rect x="10" y="9" width="12" height="2" fill="var(--on-primary)" />
+              <rect x="10" y="14" width="9" height="2" fill="var(--on-primary)" />
+            </svg>
             {document.title}
           </Link>
           <Link to="/setup" className="btn btn-ghost">

@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { Plus, RefreshCw, Search, X } from 'lucide-react'
+import { categoryStyle } from '../components/Category'
 import { NoteItem } from '../components/NoteItem'
 import { StatusBanner } from '../components/StatusBanner'
 import { monthLabel } from '../lib/date'
@@ -49,12 +50,35 @@ export function NoteList() {
 
   return (
     <div className="page">
-      <header className="page-header">
-        <h1>{mode === 'owner' ? '筆記' : '公開筆記'}</h1>
-        <button className="icon-btn" aria-label="重新整理" onClick={() => reload()} disabled={status === 'loading'}>
-          <RefreshCw size={20} className={status === 'loading' ? 'spin' : ''} />
-        </button>
-      </header>
+      {mode === 'owner' ? (
+        <header className="page-header">
+          <h1>筆記</h1>
+          <button className="icon-btn" aria-label="重新整理" onClick={() => reload()} disabled={status === 'loading'}>
+            <RefreshCw size={20} className={status === 'loading' ? 'spin' : ''} />
+          </button>
+        </header>
+      ) : (
+        <header className="hero">
+          <h1>{document.title}</h1>
+          <p>{document.querySelector<HTMLMetaElement>('meta[name="description"]')?.content}</p>
+          {status === 'ready' && (
+            <dl className="hero-stats">
+              <div>
+                <dt>公開筆記</dt>
+                <dd>{notes.length}</dd>
+              </div>
+              <div>
+                <dt>分類</dt>
+                <dd>{categories.length}</dd>
+              </div>
+              <div>
+                <dt>標籤</dt>
+                <dd>{new Set(notes.flatMap((n) => n.meta.tags)).size}</dd>
+              </div>
+            </dl>
+          )}
+        </header>
+      )}
 
       <div className="search">
         <Search size={18} aria-hidden className="search-icon" />
@@ -72,11 +96,15 @@ export function NoteList() {
         <button role="tab" aria-selected={!cat} className="chip-btn" onClick={() => setParam('cat', null)}>
           全部
         </button>
-        {categories.map((c) => (
+        {categories.map((c) => {
+          const { Icon } = categoryStyle(c)
+          return (
           <button key={c} role="tab" aria-selected={cat === c} className="chip-btn" onClick={() => setParam('cat', c)}>
+            <Icon size={15} aria-hidden />
             {c}
           </button>
-        ))}
+          )
+        })}
       </div>
 
       <div className="filters">

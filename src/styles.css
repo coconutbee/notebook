@@ -11,6 +11,9 @@
   --danger: #dc2626;
   --public: #047857;
   --public-soft: #d1fae5;
+  /* 圖表系列色（dataviz 預設色盤 slot 1、2，已用驗證程式檢查對比與色盲區分） */
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
   --radius: 12px;
   --nav-h: 64px;
   --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang TC', 'Noto Sans TC', 'Microsoft JhengHei', sans-serif;
@@ -31,6 +34,8 @@
     --danger: #f87171;
     --public: #34d399;
     --public-soft: #064e3b;
+    --series-1: #3987e5;
+    --series-2: #d95926;
   }
 }
 
@@ -249,3 +254,45 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--primary); o
 .toast .icon-btn { color: inherit; }
 .toast-error { background: var(--danger); color: #fff; }
 .toast-warn { background: var(--primary); color: var(--on-primary); }
+
+/* ---------- 追蹤 ---------- */
+.date-nav { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.date-label { display: flex; flex-direction: column; align-items: center; gap: 4px; font-weight: 600; text-align: center; }
+.date-label input { width: auto; min-height: 36px; padding: 4px 8px; font-size: 0.875rem; font-weight: 400; }
+.today-btn { display: block; margin: 4px auto 0; min-height: 36px; }
+.field-error { color: var(--danger); font-size: 0.8125rem; }
+input[aria-invalid='true'] { border-color: var(--danger); }
+.exercise { border: 0; padding: 0; margin: 8px 0 0; display: flex; flex-direction: column; gap: 8px; }
+.exercise legend { font-size: 0.875rem; font-weight: 600; color: var(--muted); margin-bottom: 4px; }
+.exercise-item { display: flex; flex-direction: column; gap: 2px; }
+.exercise-row { display: grid; grid-template-columns: 1fr 72px 80px 44px; gap: 6px; align-items: center; }
+.exercise-row input { padding: 10px 8px; }
+.exercise .btn-ghost { align-self: flex-start; padding: 0 8px; color: var(--primary); }
+.day-summary { margin: 8px 0 4px; }
+.save-btn { flex: 1; }
+.trend-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 24px 0 8px; }
+.trend-head h2 { margin: 0; }
+.seg { display: flex; gap: 6px; }
+.seg .chip-btn { min-width: 48px; }
+.stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin: 0 0 4px; }
+@media (min-width: 640px) { .stats { grid-template-columns: repeat(4, 1fr); } }
+.stats > div { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 12px; }
+.stats dt { font-size: 0.8125rem; color: var(--muted); }
+.stats dd { margin: 2px 0 0; font-size: 1.15rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.chart-card { margin: 12px 0 0; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 8px 8px 4px; }
+.chart-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 12px; padding: 0 8px 4px 12px; }
+.chart-head h3 { margin: 0; font-size: 1rem; }
+.legend { display: flex; gap: 12px; list-style: none; margin: 0; padding: 0; font-size: 0.8125rem; color: var(--muted); }
+.legend li { display: inline-flex; align-items: center; gap: 6px; }
+.chart-empty { padding: 32px 12px; text-align: center; margin: 0; }
+.chart-tip { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; box-shadow: 0 4px 12px rgb(0 0 0 / 0.15); font-size: 0.8125rem; color: var(--fg); }
+.chart-tip-title { color: var(--muted); margin-bottom: 4px; }
+.chart-tip-row { display: flex; align-items: center; gap: 6px; }
+.chart-tip-row strong { margin-left: auto; padding-left: 12px; font-variant-numeric: tabular-nums; }
+.swatch { width: 10px; height: 10px; border-radius: 2px; flex: none; }
+.table-view { margin-top: 12px; }
+.table-view summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; color: var(--primary); }
+.table-scroll { overflow-x: auto; }
+.table-view table { width: 100%; border-collapse: collapse; font-size: 0.875rem; font-variant-numeric: tabular-nums; }
+.table-view th, .table-view td { padding: 6px 8px; border-bottom: 1px solid var(--border); text-align: right; white-space: nowrap; }
+.table-view th[scope='row'], .table-view thead th:first-child { text-align: left; font-weight: 500; }

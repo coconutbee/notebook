@@ -12,7 +12,7 @@ const items = [
 export function Nav() {
   return (
     <nav className="nav" aria-label="主要導覽">
-      <div className="nav-brand">筆記本</div>
+      <div className="nav-brand">{document.title}</div>
       {items.map(({ to, label, icon: Icon, end }) => (
         <NavLink key={to} to={to} end={end} className="nav-item">
           <Icon size={22} aria-hidden />

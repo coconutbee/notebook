@@ -1,3 +1,4 @@
+import { Suspense, lazy } from 'react'
 import { HashRouter, Link, Navigate, Route, Routes } from 'react-router-dom'
 import { Nav } from './components/Nav'
 import { ToastProvider } from './components/Toast'
@@ -7,6 +8,9 @@ import { NoteView } from './pages/NoteView'
 import { Settings } from './pages/Settings'
 import { Setup } from './pages/Setup'
 import { StoreProvider, useStore } from './store'
+
+// 圖表套件較大，只有打開「追蹤」時才下載
+const Tracker = lazy(() => import('./pages/Tracker').then((m) => ({ default: m.Tracker })))
 
 function Shell() {
   const { mode } = useStore()
@@ -18,7 +22,7 @@ function Shell() {
       ) : (
         <header className="visitor-bar">
           <Link to="/notes" className="nav-brand">
-            筆記本
+            {document.title}
           </Link>
           <Link to="/setup" className="btn btn-ghost">
             登入
@@ -34,7 +38,14 @@ function Shell() {
             <>
               <Route path="/new" element={<NoteEdit key="new" />} />
               <Route path="/edit/*" element={<NoteEdit />} />
-              <Route path="/track" element={<div className="page"><h1>追蹤</h1><p className="muted">第 2 階段實作。</p></div>} />
+              <Route
+                path="/track"
+                element={
+                  <Suspense fallback={<p className="page muted loading">載入中…</p>}>
+                    <Tracker />
+                  </Suspense>
+                }
+              />
               <Route path="/settings" element={<Settings />} />
             </>
           )}

@@ -7,6 +7,8 @@ import { DEFAULT_CONFIG, parseConfig, type AppConfig } from './lib/config'
 import { nowIso } from './lib/date'
 import { stringifyNote, type NoteMeta } from './lib/frontmatter'
 import { NOTE_RE, buildNote, notePath, sortNotes, type Note } from './lib/notes'
+import { METRICS_RE, stringifyMonth, type DayEntry, type MonthData } from './lib/metrics'
+import { toMonthFile, writeDay, type MonthFile } from './lib/metricsSync'
 import { hasPublic, loadPublicNotes, syncPublic } from './lib/publish'
 
 export interface SaveInput {
@@ -14,6 +16,8 @@ export interface SaveInput {
   meta: NoteMeta
   body: string
 }
+
+export { DayConflictError, type MonthFile } from './lib/metricsSync'
 
 interface Store {
   /** owner：有 token，可讀寫全部；visitor：只能看公開筆記 */
@@ -31,6 +35,15 @@ interface Store {
   saveNote(prev: Note | null, input: SaveInput): Promise<{ note: Note; warning?: string }>
   deleteNote(note: Note): Promise<{ warning?: string }>
   republish(): Promise<void>
+  /** 所有月份檔案（key = YYYY-MM） */
+  metrics: Record<string, MonthFile>
+  /** 所有日子的記錄合併在一起（key = YYYY-MM-DD） */
+  days: MonthData
+  /**
+   * 儲存某一天的記錄（entry 為 null 代表刪除）。base 是開始編輯時那天的內容：
+   * 檔案在別處被改過時，若別處沒動到這一天就自動合併；動到了就丟出 DayConflictError
+   */
+  saveDay(date: string, entry: DayEntry | null, base: DayEntry | null): Promise<void>
 }
 
 const Ctx = createContext<Store | null>(null)
@@ -65,6 +78,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [config, setConfig] = useState<AppConfig>(DEFAULT_CONFIG)
   const [status, setStatus] = useState<Store['status']>('loading')
   const [error, setError] = useState<string | null>(null)
+  const [metrics, setMetrics] = useState<Record<string, MonthFile>>({})
+  const metricsRef = useRef<Record<string, MonthFile>>({})
+
+  const commitMonth = useCallback((month: string, file: MonthFile) => {
+    metricsRef.current = { ...metricsRef.current, [month]: file }
+    setMetrics(metricsRef.current)
+  }, [])
 
   const commit = useCallback((next: Note[]) => {
     notesRef.current = next
@@ -107,6 +127,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         const noteFiles = files.filter((f) => NOTE_RE.test(f.path))
         const loaded = await mapPool(noteFiles, 6, async (f) => buildNote(f.path, f.sha, await readBlob(f.sha)))
         commit(sortNotes(loaded.filter((n): n is Note => !!n)))
+        const months: Record<string, MonthFile> = {}
+        await mapPool(
+          files.filter((f) => METRICS_RE.test(f.path)),
+          6,
+          async (f) => {
+            months[METRICS_RE.exec(f.path)![1]] = toMonthFile(f.path, f.sha, await readBlob(f.sha))
+          },
+        )
+        metricsRef.current = months
+        setMetrics(months)
         void cachePrune(new Set(files.map((f) => f.sha)))
       }
       setStatus('ready')
@@ -201,6 +231,19 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const republish = useCallback(() => syncPublic(need().pub, notesRef.current), [need])
 
+  const days = useMemo(() => Object.assign({}, ...Object.values(metrics).map((m) => m.data)) as MonthData, [metrics])
+
+  const saveDay = useCallback(
+    (date: string, entry: DayEntry | null, base: DayEntry | null) => {
+      const month = date.slice(0, 7)
+      return writeDay(need().data, metricsRef.current[month], date, entry, base, async (file) => {
+        if (file.sha) await cacheSet(file.sha, stringifyMonth(file.data))
+        commitMonth(month, file)
+      })
+    },
+    [need, commitMonth],
+  )
+
   const value: Store = {
     mode: github ? 'owner' : 'visitor',
     notes,
@@ -214,6 +257,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     saveNote,
     deleteNote,
     republish,
+    metrics,
+    days,
+    saveDay,
   }
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }

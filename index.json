@@ -1,6 +1,18 @@
 {
   "notes": [
     {
+      "path": "notes/工作/2026-10-12-示波器量測.md",
+      "title": "示波器量測",
+      "date": "2026-10-12",
+      "tags": [
+        "示波器",
+        "量測",
+        "hold-up time"
+      ],
+      "updated": "2026-10-12T03:07:20.798Z",
+      "body": "## 示波器設定\n\n- Coupling：\"DC\"、\"AC\"（DC mode = AC + DC）\n- Differential Probe Impedance：1 MΩ\n- Bandwidth Limit：Differential Probe B.W. 500 MHz, oscilloscope shall set B.W. under 500 MHz；btw. larger B.W., larger noise（harmonics）\n- Trigger（t1, t2）：上升緣、下降緣、雙緣\n- EXT：接外部 Signal (e.g. Source)\n- 外部接Source Sigal 可用於量測hold-up time、Inrush、droop\n\n## Acquisition 採集\n\n- Math：針對指定channel套上數學運算式 f( )\n- Ref：疊加其他 Ref 的 channel data\n- Bus：驗證告警時序，e.g. V drop 時，PSU 的 PMBus 狀態暫存器多久後更新\n\n## 其他\n\n- Measurement：default 是顯示量測值的平均（μ）\n- Wide Badge：三相量測專用，Vrms_n、Irms_n、P_n、S_n、Q_n、PF (n=1,2,3)\n- ⚠ 效率、PF、THD 要用 Power Meter 才準\n"
+    },
+    {
       "path": "notes/工作/2026-10-12-Git-基礎指令與觀念.md",
       "title": "Git 基礎指令與觀念",
       "date": "2026-10-12",

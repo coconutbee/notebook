@@ -66,6 +66,18 @@
       ],
       "updated": "2026-10-12T03:05:58.222Z",
       "body": "## TE Tips\n\n1. 新設備，Test Plan：「室溫、新品、CC mode，hold-up time = 15 ms，要求 12 ms，margin 25%」\n   - 用 CP mode 才貼近 server 抽載；CC mode 實際 power 會少抽，數據比較漂亮\n   - 用電容的壽命末期容量（依電容 spec. 的容量 derated）重新計算，看 hold-up time\n   - 測低溫條件下的 hold-up（低溫容值 ↓）\n   - 在 BUS 漣波谷底斷電\n2. 示波器要看 12 V 輸出的小 undershoot，why offset not position？\n   - 因小 undershoot 相對 12 V 小，用 position 只能平移；用 offset 扣除 12 V，再調 scale，就可以好好量測 undershoot\n"
+    },
+    {
+      "path": "notes/工作/PFC-頻率接近-loading-頻率的問題.md",
+      "title": "PFC 頻率接近 loading 頻率的問題",
+      "date": "",
+      "tags": [
+        "PFC",
+        "iTHD",
+        "PF"
+      ],
+      "updated": "2026-10-12T05:59:02.281Z",
+      "body": "## PFC難題\n\n**Q：** Why PFC Freq. 接近 loading Freq. 時會出現 current overshoot & swinging？\n\n**A：** 因為在 loading ↑ or ↓ 時，bulk cap. 會先放、充電，但在 T_high or T_low 大時 bulk 已完全放、充電，而 PFC 注意到 power 不夠 or 太多時，控制 AC Source in。\n\n但在 PFC 的 freq. 接近 loading 的 freq. 時，PFC 會一直追趕 loading 但追不上，導致 current 往反方向修正，result 就是 overshoot、swinging，甚至 clamped，因而使 iTHD ↑，PF efficient ↓。\n\n## What made iTHD ↑\n\n- PFC freq. closed to loading freq.\n- Current wave distortion\n- Switching power supplies\n\n## What made PF efficient ↓\n\n- low loading\n\n\n![功率三角形](../../images/2026-10/mv4ud3vq7jyu.jpg)\n"
     }
   ]
 }

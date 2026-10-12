@@ -1,6 +1,18 @@
 {
   "notes": [
     {
+      "path": "notes/工作/2026-10-12-PFC-回授與-power-feedforward.md",
+      "title": "PFC 回授與 power feedforward",
+      "date": "2026-10-12",
+      "tags": [
+        "PFC",
+        "回授",
+        "power feedforward"
+      ],
+      "updated": "2026-10-12T03:22:18.753Z",
+      "body": "## 1. 系統架構與問題\nAC ──► PFC（1st 側, MCU）──V_bulk──► DC/DC ──[隔離]──► 2nd 側 ──► Load\n              ▲                                         │\n              └──────────── I_o 訊號（前饋）────────────┘\n測試條件：Dynamic load 以 100 Hz 在 low / high 之間切換\nPFC 的 bulk 電壓上有 120 Hz ripple（60 Hz 市電的兩倍頻）\n負載變動頻率（100 Hz）和 ripple 頻率很接近，傳統控制跟不上\n\n## 2. 傳統回授：只看 V_bulk（慢）\n- loading ↑ → bulk cap 放電、V_bus 下降 → PI 控制器看到 V_bus 掉 → 拉高電流命令補功率\n- 問題在於 PFC 根本不知道負載功率 W_L，只能等 V_bus 掉了才反應\n電壓環頻寬必須遠低於 120 Hz（否則 ripple 會被當成誤差，讓輸入電流失真、PF 變差），所以響應天生很慢\n## 3. Power Feedforward（PFFD）：直接告訴 PFC 負載要多少\n- 利用從LLC側量到的 I_o 估負載功率：P ≈ V_o × I_o\n  - V_o 視為穩定的預設值（default steady），所以實際只需傳 I_o\n  - I_o 變大或變小時，直接加進 PFC 的電流命令，不用等 V_bus 掉下來\n補償器的迴授接上 I_o，可以加快響應\n\n## 4. I_o 訊號怎麼從LLC側傳到PFC側\n兩側之間隔著隔離 IC，有兩種傳法：\n\n| 方式 | 實作 |\t速度 | 用途 |\n|---------|-------|-----|-----|\n|EPWM| 硬體 PWM 編碼 I_o，經隔離傳送|µs 等級|即時的 I_o 前饋訊號.\n|UART（RX/TX）|韌體通訊|約 1 ms|系統資訊、狀態，對前饋來說太慢|\n\n## 5. 依負載變動頻率分工\n|負載變動|處理方式|原因|\n|---------|-------|-----|\n|低頻（約 50 Hz 以上到數百 Hz）|\tPFC 開啟 |power feedforward\tbulk 電壓擺動大；載卸時沒有提前調整，V_bulk 容易衝過頭觸發 OVP（或掉太多UVP）|\n|高頻（約 10 kHz）|F.W. bypass power feedforward|每個週期的能量很小，bulk cap 自己吸收得了，bus 自動調節；這時前饋反而會讓 PFC 跟著亂抖\n\n## 6. PFFD 訊號的低通濾波\nI_o 訊號先經過低通濾波，再送進 PFC，把截止頻率從 200 Hz 降到 2 Hz\n效果：前饋量從劇烈振盪變平緩，大約 40 ms 收斂\n目的：只讓「平均功率的變化」進入 PFC，不讓高頻擾動影響輸入電流\n"
+    },
+    {
       "path": "notes/工作/2026-10-12-示波器量測.md",
       "title": "示波器量測",
       "date": "2026-10-12",
@@ -31,18 +43,6 @@
       ],
       "updated": "2026-10-12T03:05:58.222Z",
       "body": "## TE Tips\n\n1. 新設備，Test Plan：「室溫、新品、CC mode，hold-up time = 15 ms，要求 12 ms，margin 25%」\n   - 用 CP mode 才貼近 server 抽載；CC mode 實際 power 會少抽，數據比較漂亮\n   - 用電容的壽命末期容量（依電容 spec. 的容量 derated）重新計算，看 hold-up time\n   - 測低溫條件下的 hold-up（低溫容值 ↓）\n   - 在 BUS 漣波谷底斷電\n2. 示波器要看 12 V 輸出的小 undershoot，why offset not position？\n   - 因小 undershoot 相對 12 V 小，用 position 只能平移；用 offset 扣除 12 V，再調 scale，就可以好好量測 undershoot\n"
-    },
-    {
-      "path": "notes/工作/PFC-回授與-power-feedforward.md",
-      "title": "PFC 回授與 power feedforward",
-      "date": "",
-      "tags": [
-        "PFC",
-        "回授",
-        "power feedforward"
-      ],
-      "updated": "2026-10-08T07:47:45.471Z",
-      "body": "（手繪：AC → PFC 120 Hz —— Dynamic load 100 Hz，load 的 low / high 回饋給 PFC）\n\n## 回授\n\nloading ↑ ⇒ bulk cap. discharge →（PI Control，看 V_bulk）→ 補工\n\n## Power feedforward\n\n- PFC can't know W_L（負載功率）\n- 電流環：I_o ↑↓ 回饋給 PFC\n- I_o、V_o（default steady）\n- EPWM：訊號（硬體），µs 等級 → I_o signal\n- RT/TX（UART）：1 ms → 系統\n\n## 響應速度\n\n—— bus load ↑ —— 響應\n\n（手繪：1st（PFC / MCU）—[iso, IC]— 2nd，50 Hz ↑）\n\n- High freq. 10 kHz：F.W. bypass power feedforward，bus 自動調節\n- 前面 PFC 要 power feedforward，避免 OVP 撐不住，後面再 bypass\n- PFFD：200 Hz → 2 Hz low pass，約 40 ms（手繪：波形由劇烈振盪逐漸平緩）\n- 補償器迴授接 I_o，加速響應\n"
     },
     {
       "path": "notes/工作/三相電-Y-接與-Δ-接.md",

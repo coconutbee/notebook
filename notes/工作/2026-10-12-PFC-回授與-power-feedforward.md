@@ -6,7 +6,7 @@ tags:
   - 回授
   - power feedforward
 visibility: public
-updated: 2026-10-12T03:30:07.882Z
+updated: 2026-10-12T05:47:57.754Z
 ---
 
 ## 1. 系統架構與問題
@@ -46,6 +46,6 @@ PFC 的 bulk 電壓上有 120 Hz ripple（60 Hz 市電的兩倍頻）
 |高頻（約 10 kHz）|F.W. bypass power feedforward|每個週期的能量很小，bulk cap 自己吸收得了，bus 自動調節；這時前饋反而會讓 PFC 跟著亂抖
 
 ## 6. PFFD 訊號的低通濾波
-I_o 訊號先經過低通濾波，再送進 PFC，把截止頻率從 200 Hz 降到 2 Hz
+I_o 訊號先經過低通濾波，再送進 PFC，把頻率從 200 Hz 降到 2 Hz
 效果：前饋量從劇烈振盪變平緩，大約 40 ms 收斂
-目的：只讓「平均功率的變化」進入 PFC，不讓高頻擾動影響輸入電流
+目的：關閉PFFD進入PFC，不讓高頻擾動影響輸入電流

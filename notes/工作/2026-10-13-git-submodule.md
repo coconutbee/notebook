@@ -4,8 +4,9 @@ date: 2026-10-13
 tags:
   - git
   - git submodule
+subcategory: Git
 visibility: public
-updated: 2026-10-13T03:09:54.457Z
+updated: 2026-10-13T03:11:31.251Z
 ---
 
 # Git Submodule 開發與同步筆記

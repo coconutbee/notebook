@@ -56,6 +56,17 @@ describe('公開同步', () => {
     expect(index.notes.map((n: { space: string }) => n.space).sort()).toEqual(['personal', 'shared'])
   })
 
+  it('共享區沒載入時，不刪除公開分支上的共享筆記，index.json 也保留它們', async () => {
+    const mine = await save('個人公開', 'public')
+    const theirs = { ...(await save('共享公開', 'public')), space: 'shared' as const }
+    await syncPublic(pub, [mine, theirs], {})
+    await syncPublic(pub, [mine], {}, ['personal'])
+    const files = repos.get('me/pub')!
+    expect(files.has(`shared/${theirs.path}`)).toBe(true)
+    const index = JSON.parse(files.get('index.json')!)
+    expect(index.notes.map((n: { title: string }) => n.title).sort()).toEqual(['個人公開', '共享公開'])
+  })
+
   it('訪客讀回公開筆記時還原 space', async () => {
     const mine = await save('公開', 'public')
     await syncPublic(pub, [{ ...mine, space: 'shared' }], {})

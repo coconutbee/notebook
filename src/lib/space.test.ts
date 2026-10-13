@@ -59,6 +59,14 @@ describe('copyImages', () => {
     expect(before.size).toBe(0)
   })
 
+  it('目標已有同路徑但內容不同的圖片時不覆蓋', async () => {
+    repos.get('org/shared')!.set(IMG, 'theirs')
+    const existing = new Map([[IMG, 'other-sha']])
+    const next = await copyImages(shared, existing, [IMG], await source())
+    expect(repos.get('org/shared')!.get(IMG)).toBe('theirs')
+    expect(next.get(IMG)).toBe('other-sha')
+  })
+
   it('目標已有相同內容就不再寫入', async () => {
     const src = await source()
     const next = await copyImages(shared, new Map(), [IMG], src)

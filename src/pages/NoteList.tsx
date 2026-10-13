@@ -6,7 +6,7 @@ import { categoryStyle } from '../components/Category'
 import { NoteItem } from '../components/NoteItem'
 import { StatusBanner } from '../components/StatusBanner'
 import { monthLabel } from '../lib/date'
-import type { Note } from '../lib/notes'
+import { noteId, type Note } from '../lib/notes'
 import { matchNote, parseQuery } from '../lib/search'
 import { useStore } from '../store'
 
@@ -41,7 +41,7 @@ export function NoteList() {
       if (month && (month === UNDATED ? n.meta.date : !n.meta.date.startsWith(month))) return false
       if (!terms.length) return true
       const s = matchNote(n, terms)
-      if (s) snippets.set(n.path, s)
+      if (s) snippets.set(noteId(n), s)
       return s !== null
     })
     const map = new Map<string, Note[]>()
@@ -183,11 +183,11 @@ export function NoteList() {
           <ul className="note-list">
             {list.map((n) => (
               <NoteItem
-                key={n.path}
+                key={noteId(n)}
                 note={n}
                 showBadge={mode === 'owner'}
                 movable={mode !== 'visitor'}
-                snippet={snippets.get(n.path)}
+                snippet={snippets.get(noteId(n))}
                 terms={terms}
               />
             ))}

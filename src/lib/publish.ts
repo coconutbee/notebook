@@ -40,9 +40,16 @@ const SPACES: Space[] = ['personal', 'shared']
  * 缺的補上、內容不同的更新、不該公開的刪除，最後更新 index.json。
  * 資料 repo 與公開分支的同一份內容 blob sha 相同，所以沒變的檔案不會重寫。
  * 公開筆記引用到的圖片一併複製；某個 space 有傳入 images 時，才清掉該 space 不再被引用的圖片。
+ * 只處理 loaded 裡的 space，其他 space 的公開內容原封不動。
  */
-export async function syncPublic(pub: GitHub, notes: Note[], images: Partial<Record<Space, ImageSource>> = {}): Promise<void> {
-  const desired = sortNotes(notes.filter((n) => n.meta.visibility === 'public'))
+export async function syncPublic(
+  pub: GitHub,
+  notes: Note[],
+  images: Partial<Record<Space, ImageSource>> = {},
+  /** 這次確實載入的 space：沒載入的（例如共享 token 失效）不刪除、也保留它在 index.json 的項目 */
+  loaded: Space[] = SPACES,
+): Promise<void> {
+  const desired = sortNotes(notes.filter((n) => n.meta.visibility === 'public' && loaded.includes(n.space)))
   await pub.ensureBranch(PUBLIC_README)
   const existing = new Map((await pub.listFiles()).map((f) => [f.path, f.sha]))
   const wanted = new Set(desired.map((n) => publicPath(n.space, n.path)))
@@ -64,13 +71,24 @@ export async function syncPublic(pub: GitHub, notes: Note[], images: Partial<Rec
     if (existing.get(path) !== sha) await pub.putBase64(path, await src.read(sha), `發布圖片：${path}`, existing.get(path))
   }
   for (const [path, sha] of existing) {
-    const isNote = SPACES.some((s) => path.startsWith(publicPath(s, 'notes/')))
+    const noteSpace = SPACES.find((s) => path.startsWith(publicPath(s, 'notes/')))
     const imageSpace = SPACES.find((s) => path.startsWith(publicPath(s, 'images/')))
-    const stale = isNote ? !wanted.has(path) : imageSpace !== undefined && !!images[imageSpace] && !wantedImages.has(path)
+    const stale =
+      noteSpace !== undefined
+        ? loaded.includes(noteSpace) && !wanted.has(path)
+        : imageSpace !== undefined && loaded.includes(imageSpace) && !!images[imageSpace] && !wantedImages.has(path)
     if (stale) await pub.deleteFile(path, sha, `取消發布：${path}`)
   }
 
-  const entries: PublicEntry[] = desired.map((n) => ({
+  // 沒載入的 space：沿用目前 index.json 裡它的項目
+  const kept: PublicEntry[] =
+    loaded.length === SPACES.length
+      ? []
+      : await pub.getFile('index.json').then(
+          (f) => (f ? (JSON.parse(f.text) as { notes: PublicEntry[] }).notes.filter((e) => !loaded.includes(e.space ?? 'personal')) : []),
+          () => [],
+        )
+  const entries: PublicEntry[] = [...kept, ...desired.map((n) => ({
     space: n.space,
     path: n.path,
     title: n.meta.title,
@@ -79,7 +97,7 @@ export async function syncPublic(pub: GitHub, notes: Note[], images: Partial<Rec
     subcategory: n.meta.subcategory,
     updated: n.meta.updated,
     body: n.body,
-  }))
+  }))]
   const index = JSON.stringify({ notes: entries }, null, 2) + '\n'
   const indexSha = existing.get('index.json')
   if (indexSha !== (await gitBlobSha(index))) await pub.putFile('index.json', index, '更新公開筆記索引', indexSha)

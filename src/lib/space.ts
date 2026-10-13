@@ -81,7 +81,7 @@ export async function loadSpace(gh: GitHub, space: Space, readBlob: (sha: string
 
 /**
  * 把筆記用到的圖片複製到另一個 repo（搬移筆記到別的 space 時用）。
- * 只複製 paths 裡、來源確實有的圖片；目標已有相同內容（sha 一樣）就跳過。回傳目標的新圖片清單。
+ * 只複製 paths 裡、來源確實有的圖片；目標已有同路徑的檔案就跳過（不覆蓋）。回傳目標的新圖片清單。
  */
 export async function copyImages(
   to: GitHub,
@@ -92,8 +92,9 @@ export async function copyImages(
   const next = new Map(toImages)
   for (const path of new Set(paths)) {
     const sha = from.shas.get(path)
-    if (!sha || next.get(path) === sha) continue
-    next.set(path, await to.putBase64(path, await from.read(sha), `複製圖片：${path}`, next.get(path)))
+    // 目標已有這個路徑（不論內容是否相同）就不寫：絕不覆蓋目標 repo 的檔案
+    if (!sha || next.has(path)) continue
+    next.set(path, await to.putBase64(path, await from.read(sha), `複製圖片：${path}`))
   }
   return next
 }

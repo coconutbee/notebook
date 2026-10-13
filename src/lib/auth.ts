@@ -14,6 +14,10 @@ export function saveToken(token: string) {
   localStorage.setItem(KEY, token)
 }
 
+export function clearToken() {
+  localStorage.removeItem(KEY)
+}
+
 // 共享 token：只能存取組織底下的 notebook-shared（同事只需要這一把）
 const SHARED_KEY = 'notebook.sharedToken'
 

@@ -2,7 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { DATA_REPO, OWNER, PUBLIC_BRANCH, PUBLIC_REPO, SHARED_OWNER, SHARED_REPO } from '../config'
 import { GitHub, checkTokenFormat, diagnoseNetwork, errorMessage } from '../github/api'
-import { clearSharedToken, saveSharedToken, saveToken } from '../lib/auth'
+import { clearSharedToken, clearToken, saveSharedToken, saveToken } from '../lib/auth'
 import { detectRole } from '../lib/role'
 
 const clean = (t: string) => t.replace(/\s/g, '') // 去掉複製時夾帶的空白與換行
@@ -59,6 +59,9 @@ export function Setup() {
         return
       }
       saveToken(t)
+    } else {
+      // 以同事身分設定：清掉這台裝置先前的個人 token，否則仍會以擁有者身分登入
+      clearToken()
     }
     if (keepShared) saveSharedToken(s)
     else clearSharedToken()

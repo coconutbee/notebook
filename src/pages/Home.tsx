@@ -105,7 +105,7 @@ export function Home() {
         {recent.length ? (
           <ul className="note-list">
             {recent.map((n) => (
-              <NoteItem key={n.path} note={n} showBadge />
+              <NoteItem key={noteId(n)} note={n} showBadge />
             ))}
           </ul>
         ) : (

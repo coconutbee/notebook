@@ -181,7 +181,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     if (!github?.pub) return
     const sources: Partial<Record<Space, ImageSource>> = { personal: imageSource('personal') }
     if (github.shared && sharedReady) sources.shared = imageSource('shared')
-    await syncPublic(github.pub, notesRef.current, sources)
+    // 共享區沒載入（沒有共享 token 或載入失敗）時，公開分支上的共享筆記保持原狀，不會被當成「已取消公開」刪掉
+    const loaded: Space[] = sharedReady ? ['personal', 'shared'] : ['personal']
+    await syncPublic(github.pub, notesRef.current, sources, loaded)
   }, [github, sharedReady, imageSource])
 
   const publish = useCallback(async (): Promise<string | undefined> => {

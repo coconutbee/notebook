@@ -5,8 +5,9 @@ tags:
   - PFC
   - 回授
   - power feedforward
+subcategory: 測試
 visibility: public
-updated: 2026-10-12T05:48:20.884Z
+updated: 2026-10-13T03:20:55.045Z
 ---
 
 ## 1. 系統架構與問題

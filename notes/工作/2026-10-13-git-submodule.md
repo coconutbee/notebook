@@ -4,7 +4,7 @@ date: 2026-10-13
 tags:
   - git
   - git submodule
-subcategory: Git
+subcategory: git
 visibility: public
 updated: 2026-10-13T03:11:31.251Z
 ---

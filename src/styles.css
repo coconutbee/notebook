@@ -522,3 +522,4 @@ h2.section-head { display: block; }
   .app.visitor .browse { top: 76px; max-height: calc(100vh - 92px); }
   .browse-main .chips, .browse-main .tag-panel { display: none; }
 }
+.badge-shared { color: var(--hue1-fg); border-color: var(--hue1-fg); background: var(--hue1-bg); }

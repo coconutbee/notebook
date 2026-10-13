@@ -1,28 +1,43 @@
-import { useState, type FormEvent } from 'react'
+import { Fragment, useState, type FormEvent } from 'react'
+import { Link } from 'react-router-dom'
 import { ArrowDown, ArrowUp, ChevronRight, Pencil, Plus, Trash2 } from 'lucide-react'
 import { categoryError } from '../lib/config'
 import { imageRefs } from '../lib/images'
-import { DATA_REPO, OWNER, PUBLIC_BRANCH, PUBLIC_REPO } from '../config'
+import { DATA_REPO, OWNER, PUBLIC_BRANCH, PUBLIC_REPO, SHARED_OWNER, SHARED_REPO } from '../config'
 import { useToast } from '../components/Toast'
 import { errorMessage } from '../github/api'
 import { logout } from '../lib/auth'
 import { cacheClear } from '../lib/cache'
-import { useStore } from '../store'
+import { useStore, type Space } from '../store'
 
 type Run = (label: string, fn: () => Promise<string | void>) => Promise<void>
 
 /** 某個分類底下的子分類：新增、改名（改寫筆記的 subcategory）、排序、刪除沒有筆記的 */
-function SubcategoryEditor({ category, busy, run, setBusy }: { category: string; busy: boolean; run: Run; setBusy: (s: string) => void }) {
-  const { notes, config, saveConfig, renameSubcategory, subcategoriesOf } = useStore()
+function SubcategoryEditor({
+  space,
+  category,
+  busy,
+  run,
+  setBusy,
+}: {
+  space: Space
+  category: string
+  busy: boolean
+  run: Run
+  setBusy: (s: string) => void
+}) {
+  const { notes: allNotes, configOf, saveConfig, renameSubcategory, subcategoriesOf } = useStore()
+  const notes = allNotes.filter((n) => n.space === space)
+  const config = configOf(space)
   const toast = useToast()
   const [name, setName] = useState('')
   const [addError, setAddError] = useState<string | null>(null)
   const list = config.subcategories[category] ?? []
-  const all = subcategoriesOf(category)
+  const all = subcategoriesOf(category, space)
   const count = (s: string) => notes.filter((n) => n.category === category && n.meta.subcategory === s).length
   const unassigned = notes.filter((n) => n.category === category && !n.meta.subcategory).length
   const save = (next: string[], message: string) =>
-    saveConfig('personal', { ...config, subcategories: { ...config.subcategories, [category]: next } }, message)
+    saveConfig(space, { ...config, subcategories: { ...config.subcategories, [category]: next } }, message)
 
   function add(e: FormEvent) {
     e.preventDefault()
@@ -52,7 +67,7 @@ function SubcategoryEditor({ category, busy, run, setBusy }: { category: string;
       : `確定把「${from}」改名為「${to}」嗎？${n ? `\n會更新 ${n} 篇筆記（每篇是一次 GitHub commit）。` : ''}`
     if (!confirm(msg)) return
     void run('改名中…', async () => {
-      const { warning } = await renameSubcategory('personal', category, from, to, (done, total) => total && setBusy(`更新筆記 ${done}/${total}…`))
+      const { warning } = await renameSubcategory(space, category, from, to, (done, total) => total && setBusy(`更新筆記 ${done}/${total}…`))
       if (warning) toast(warning, 'error')
       return `已將「${from}」改名為「${to}」`
     })
@@ -128,8 +143,12 @@ function SubcategoryEditor({ category, busy, run, setBusy }: { category: string;
   )
 }
 
-function CategoryManager() {
-  const { notes, categories, config, saveConfig, renameCategory, subcategoriesOf } = useStore()
+/** 一個 space 的分類管理（擁有者有「我的分類」與「共享分類」兩份） */
+function CategoryManager({ space, title }: { space: Space; title: string }) {
+  const { notes: allNotes, categoriesOf, configOf, saveConfig, renameCategory, subcategoriesOf } = useStore()
+  const notes = allNotes.filter((n) => n.space === space)
+  const categories = categoriesOf(space)
+  const config = configOf(space)
   const toast = useToast()
   const [busy, setBusy] = useState<string | null>(null)
   const [name, setName] = useState('')
@@ -157,7 +176,7 @@ function CategoryManager() {
     setAddError(err)
     if (err) return
     void run('新增中…', async () => {
-      await saveConfig('personal', { ...config, categories: [...list, n] }, `新增分類：${n}`)
+      await saveConfig(space, { ...config, categories: [...list, n] }, `新增分類：${n}`)
       setName('')
       return `已新增分類「${n}」`
     })
@@ -166,7 +185,7 @@ function CategoryManager() {
   function move(i: number, d: -1 | 1) {
     const next = [...list]
     ;[next[i], next[i + d]] = [next[i + d], next[i]]
-    void run('儲存中…', () => saveConfig('personal', { ...config, categories: next }, '調整分類順序'))
+    void run('儲存中…', () => saveConfig(space, { ...config, categories: next }, '調整分類順序'))
   }
 
   function rename(from: string) {
@@ -181,7 +200,7 @@ function CategoryManager() {
       : `確定把「${from}」改名為「${to}」嗎？${n ? `\n會搬移 ${n} 篇筆記到新資料夾（每篇是一次 GitHub commit）。` : ''}`
     if (!confirm(msg)) return
     void run('改名中…', async () => {
-      const { warning } = await renameCategory('personal', from, to, (done, total) => total && setBusy(`搬移筆記 ${done}/${total}…`))
+      const { warning } = await renameCategory(space, from, to, (done, total) => total && setBusy(`搬移筆記 ${done}/${total}…`))
       if (warning) toast(warning, 'error')
       return `已將「${from}」改名為「${to}」`
     })
@@ -192,7 +211,7 @@ function CategoryManager() {
     if (c === config.diaryCategory) return toast(`「${c}」是首頁日記使用的分類，不能刪除；可以改名。`, 'error')
     if (!confirm(`確定刪除分類「${c}」嗎？`)) return
     void run('刪除中…', async () => {
-      await saveConfig('personal', { ...config, categories: list.filter((x) => x !== c) }, `刪除分類：${c}`)
+      await saveConfig(space, { ...config, categories: list.filter((x) => x !== c) }, `刪除分類：${c}`)
       return `已刪除分類「${c}」`
     })
   }
@@ -202,7 +221,7 @@ function CategoryManager() {
 
   return (
     <section className="card" aria-busy={!!busy}>
-      <h2>分類</h2>
+      <h2>{title}</h2>
       <ul className="cat-list">
         {[...list, ...extra].map((c, i) => (
           <li key={c}>
@@ -241,9 +260,9 @@ function CategoryManager() {
             </div>
             <button className="sub-toggle" aria-expanded={open === c} onClick={() => setOpen(open === c ? null : c)}>
               <ChevronRight size={16} aria-hidden />
-              子分類（{subcategoriesOf(c).length}）
+              子分類（{subcategoriesOf(c, space).length}）
             </button>
-            {open === c && <SubcategoryEditor category={c} busy={!!busy} run={run} setBusy={setBusy} />}
+            {open === c && <SubcategoryEditor space={space} category={c} busy={!!busy} run={run} setBusy={setBusy} />}
           </li>
         ))}
       </ul>
@@ -269,29 +288,47 @@ function CategoryManager() {
         </p>
       )}
       <p className="small muted" role="status">
-        {busy ?? '分類與子分類存在 notebook-data 的 config.json；分類改名會把筆記搬到新資料夾，子分類改名會更新筆記；只有空的分類／子分類可以刪除。'}
+        {busy ?? `分類與子分類存在 ${space === 'shared' ? SHARED_REPO : DATA_REPO} 的 config.json；分類改名會把筆記搬到新資料夾，子分類改名會更新筆記；只有空的分類／子分類可以刪除。`}
       </p>
     </section>
   )
 }
 
-export function Settings() {
-  const { notes, reload, republish, images, deleteImage } = useStore()
-  const toast = useToast()
-  const [busy, setBusy] = useState(false)
-  const publicCount = notes.filter((n) => n.meta.visibility === 'public').length
-  const used = new Set(notes.flatMap((n) => imageRefs(n.body)))
-  const unused = [...images.personal.keys()].filter((p) => !used.has(p))
+const SPACE_REPO: Record<Space, string> = { personal: `${OWNER}/${DATA_REPO}`, shared: `${SHARED_OWNER}/${SHARED_REPO}` }
 
-  function cleanImages() {
+/** 某個 space 裡沒有被任何已儲存筆記引用的圖片 */
+function useUnusedImages(space: Space): string[] {
+  const { notes, images } = useStore()
+  const used = new Set(notes.filter((n) => n.space === space).flatMap((n) => imageRefs(n.body)))
+  return [...images[space].keys()].filter((p) => !used.has(p))
+}
+
+function CleanImagesButton({ space, busy, run }: { space: Space; busy: boolean; run: (fn: () => Promise<void>, done: string) => Promise<void> }) {
+  const { deleteImage, spaces } = useStore()
+  const unused = useUnusedImages(space)
+  const label = spaces.length > 1 ? (space === 'shared' ? '共享區' : '個人區') : ''
+  function clean() {
     const msg =
       `以下 ${unused.length} 張圖片沒有被任何已儲存的筆記使用：\n\n${unused.join('\n')}\n\n` +
-      '注意：還沒儲存的草稿裡的圖片也算在內。刪除後仍可從 notebook-data 的 git 歷史找回。確定刪除嗎？'
+      `注意：還沒儲存的草稿裡的圖片也算在內。刪除後仍可從 ${SPACE_REPO[space]} 的 git 歷史找回。確定刪除嗎？`
     if (!confirm(msg)) return
     void run(async () => {
-      for (const p of unused) await deleteImage('personal', p)
+      for (const p of unused) await deleteImage(space, p)
     }, `已刪除 ${unused.length} 張未使用的圖片`)
   }
+  return (
+    <button className="btn" disabled={busy || !unused.length} onClick={clean}>
+      清理{label}未使用的圖片{unused.length ? `（${unused.length} 張）` : ''}
+    </button>
+  )
+}
+
+export function Settings() {
+  const { notes, reload, republish, images, mode, spaces, sharedError } = useStore()
+  const toast = useToast()
+  const [busy, setBusy] = useState(false)
+  const owner = mode === 'owner'
+  const publicCount = notes.filter((n) => n.meta.visibility === 'public').length
 
   async function run(fn: () => Promise<void>, done: string) {
     setBusy(true)
@@ -312,9 +349,9 @@ export function Settings() {
     location.reload()
   }
 
-  const repoLink = (repo: string) => (
-    <a href={`https://github.com/${OWNER}/${repo}`} target="_blank" rel="noopener noreferrer">
-      {OWNER}/{repo}
+  const repoLink = (full: string) => (
+    <a href={`https://github.com/${full}`} target="_blank" rel="noopener noreferrer">
+      {full}
     </a>
   )
 
@@ -322,47 +359,69 @@ export function Settings() {
     <div className="page narrow">
       <h1>設定</h1>
 
-      <CategoryManager />
+      {spaces.map((space) => (
+        <CategoryManager key={space} space={space} title={owner && space === 'shared' ? '共享分類' : owner ? '我的分類' : '分類'} />
+      ))}
 
       <section className="card">
         <h2>資料</h2>
         <dl className="kv">
-          <dt>私人資料 repo</dt>
-          <dd>{repoLink(DATA_REPO)}</dd>
-          <dt>公開筆記</dt>
-          <dd>
-            <a href={`https://github.com/${OWNER}/${PUBLIC_REPO}/tree/${PUBLIC_BRANCH}`} target="_blank" rel="noopener noreferrer">
-              {OWNER}/{PUBLIC_REPO}（{PUBLIC_BRANCH} 分支）
-            </a>
-          </dd>
+          {spaces.map((space) => (
+            <Fragment key={space}>
+              <dt>{space === 'shared' ? '共享資料 repo' : '私人資料 repo'}</dt>
+              <dd>{repoLink(SPACE_REPO[space])}</dd>
+            </Fragment>
+          ))}
+          {owner && (
+            <>
+              <dt>公開筆記</dt>
+              <dd>
+                <a href={`https://github.com/${OWNER}/${PUBLIC_REPO}/tree/${PUBLIC_BRANCH}`} target="_blank" rel="noopener noreferrer">
+                  {OWNER}/{PUBLIC_REPO}（{PUBLIC_BRANCH} 分支）
+                </a>
+              </dd>
+            </>
+          )}
           <dt>筆記</dt>
           <dd>
-            {notes.length} 篇（公開 {publicCount} 篇）
+            {notes.length} 篇{owner ? `（公開 ${publicCount} 篇）` : ''}
           </dd>
         </dl>
+        {sharedError && <p className="small hint">{sharedError}</p>}
         <div className="btn-row">
           <button className="btn" disabled={busy} onClick={() => run(reload, '已重新載入')}>
             重新載入
           </button>
-          <button className="btn" disabled={busy} onClick={() => run(republish, '公開筆記已同步')}>
-            重新同步公開筆記
-          </button>
+          {owner && (
+            <button className="btn" disabled={busy} onClick={() => run(republish, '公開筆記已同步')}>
+              重新同步公開筆記
+            </button>
+          )}
           <button className="btn" disabled={busy} onClick={() => run(async () => { await cacheClear(); await reload() }, '已清除快取')}>
             清除本機快取
           </button>
-          <button className="btn" disabled={busy || !unused.length} onClick={cleanImages}>
-            清理未使用的圖片{unused.length ? `（${unused.length} 張）` : ''}
-          </button>
+          {spaces.map((space) => (
+            <CleanImagesButton key={space} space={space} busy={busy} run={run} />
+          ))}
         </div>
-        <p className="small muted">共 {images.personal.size} 張圖片。</p>
+        <p className="small muted">
+          共 {spaces.reduce((sum, s) => sum + images[s].size, 0)} 張圖片。
+        </p>
       </section>
 
       <section className="card">
         <h2>帳號</h2>
-        <p className="small muted">Token 存在這台裝置的瀏覽器中。</p>
-        <button className="btn btn-danger" onClick={signOut}>
-          登出並清除這台裝置的資料
-        </button>
+        <p className="small muted">
+          {owner ? '你是筆記本主人。' : '你是共享筆記的協作者，只看得到共享筆記。'}Token 存在這台裝置的瀏覽器中。
+        </p>
+        <div className="btn-row">
+          <Link className="btn" to="/setup">
+            更換 token{owner && !spaces.includes('shared') ? '（加入共享 token）' : ''}
+          </Link>
+          <button className="btn btn-danger" onClick={signOut}>
+            登出並清除這台裝置的資料
+          </button>
+        </div>
       </section>
     </div>
   )

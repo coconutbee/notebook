@@ -6,14 +6,15 @@ import { NoteItem } from '../components/NoteItem'
 import { StatusBanner } from '../components/StatusBanner'
 import { toDateStr } from '../lib/date'
 import { addDays, signedKg, summarize } from '../lib/metrics'
-import { encodeNotePath } from '../lib/notes'
+import { encodeNotePath, noteId } from '../lib/notes'
 import { useStore } from '../store'
 
-/** 擁有者首頁：今天的日記、近 7 天摘要、最近編輯、分類 */
+/** 首頁：擁有者有今天的日記與近 7 天摘要；同事只有最近編輯與分類 */
 export function Home() {
-  const { notes, categories, config, days, status } = useStore()
+  const { notes, categories, config, days, status, mode } = useStore()
+  const owner = mode === 'owner'
   const today = toDateStr()
-  const diary = notes.find((n) => n.category === config.diaryCategory && n.meta.date === today)
+  const diary = notes.find((n) => n.space === 'personal' && n.category === config.diaryCategory && n.meta.date === today)
   const week = useMemo(() => summarize(days, addDays(today, -6), today), [days, today])
   // 有 updated 的（在網站上存過）照時間排前面，其餘照日期
   const recent = useMemo(
@@ -24,7 +25,7 @@ export function Home() {
   const hour = new Date().getHours()
   const greeting = hour < 5 ? '夜深了' : hour < 11 ? '早安' : hour < 14 ? '午安' : hour < 18 ? '下午好' : '晚安'
   const diaryLink = diary
-    ? `/edit/${encodeNotePath(diary.path)}`
+    ? `/edit/${encodeNotePath(noteId(diary))}`
     : `/new?cat=${encodeURIComponent(config.diaryCategory)}`
 
   return (
@@ -35,23 +36,28 @@ export function Home() {
         </p>
         <h1>{greeting}</h1>
         <p className="welcome-sub">
-          {diary ? (preview ? `今天的${config.diaryCategory}：${preview}` : `今天的${config.diaryCategory}還沒有內容`) : `今天還沒寫${config.diaryCategory}，花幾分鐘記錄一下吧。`}
+          {!owner ? '這裡是和同事共享的筆記。' : diary ? (preview ? `今天的${config.diaryCategory}：${preview}` : `今天的${config.diaryCategory}還沒有內容`) : `今天還沒寫${config.diaryCategory}，花幾分鐘記錄一下吧。`}
         </p>
         <div className="welcome-actions">
-          <Link className="btn btn-light" to={diaryLink}>
-            <PenLine size={18} aria-hidden /> {diary ? `繼續寫${config.diaryCategory}` : `寫今天的${config.diaryCategory}`}
-          </Link>
+          {owner && (
+            <Link className="btn btn-light" to={diaryLink}>
+              <PenLine size={18} aria-hidden /> {diary ? `繼續寫${config.diaryCategory}` : `寫今天的${config.diaryCategory}`}
+            </Link>
+          )}
           <Link className="btn btn-glass" to="/new">
             <Plus size={18} aria-hidden /> 新筆記
           </Link>
-          <Link className="btn btn-glass" to="/track">
-            <Activity size={18} aria-hidden /> 記錄今天
-          </Link>
+          {owner && (
+            <Link className="btn btn-glass" to="/track">
+              <Activity size={18} aria-hidden /> 記錄今天
+            </Link>
+          )}
         </div>
       </section>
 
       <StatusBanner />
 
+      {owner && (
       <section>
         <div className="section-head">
           <h2>近 7 天</h2>
@@ -87,6 +93,7 @@ export function Home() {
         </dl>
         <p className="small muted">{week.loggedDays ? `共 ${week.loggedDays} 天有記錄` : '這 7 天還沒有記錄'}</p>
       </section>
+      )}
 
       <section>
         <div className="section-head">

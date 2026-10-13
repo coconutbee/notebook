@@ -64,7 +64,7 @@ export function NoteList() {
 
   return (
     <div className="page page-browse">
-      {mode === 'owner' ? (
+      {mode !== 'visitor' ? (
         <header className="page-header">
           <h1>筆記</h1>
           <button className="icon-btn" aria-label="重新整理" onClick={() => reload()} disabled={status === 'loading'}>
@@ -105,7 +105,7 @@ export function NoteList() {
           subsOf={subcategoriesOf}
           currentSub={sub}
           onPickSub={(s) => setParam('sub', s)}
-          manage={mode === 'owner'}
+          manage={mode !== 'visitor'}
         />
         <h2 className="browse-title">{tagTitle}</h2>
         {tagBars}
@@ -174,7 +174,7 @@ export function NoteList() {
       <StatusBanner />
 
       {status !== 'loading' && groups.length === 0 && (
-        <p className="empty">{notes.length ? (q ? `找不到「${q}」相關的筆記。` : '沒有符合條件的筆記。') : mode === 'owner' ? '還沒有筆記。' : '目前還沒有公開的筆記。'}</p>
+        <p className="empty">{notes.length ? (q ? `找不到「${q}」相關的筆記。` : '沒有符合條件的筆記。') : mode !== 'visitor' ? '還沒有筆記。' : '目前還沒有公開的筆記。'}</p>
       )}
 
       {groups.map(([ym, list]) => (
@@ -186,7 +186,7 @@ export function NoteList() {
                 key={n.path}
                 note={n}
                 showBadge={mode === 'owner'}
-                movable={mode === 'owner'}
+                movable={mode !== 'visitor'}
                 snippet={snippets.get(n.path)}
                 terms={terms}
               />
@@ -197,7 +197,7 @@ export function NoteList() {
       </div>
       </div>
 
-      {mode === 'owner' && (
+      {mode !== 'visitor' && (
         <Link to={newLink} className="fab" aria-label="新增筆記">
           <Plus size={28} />
         </Link>

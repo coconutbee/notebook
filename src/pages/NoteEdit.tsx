@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, Globe, ImagePlus, Lock } from 'lucide-react'
+import { ArrowLeft, Globe, ImagePlus, Lock, Users } from 'lucide-react'
 import { ConflictDialog } from '../components/ConflictDialog'
 import { MarkdownView } from '../components/MarkdownView'
 import { TagInput } from '../components/TagInput'
@@ -9,10 +9,11 @@ import { ConflictError, errorMessage } from '../github/api'
 import { toDateStr } from '../lib/date'
 import { clearDraft, loadDraft, saveDraft } from '../lib/drafts'
 import type { Visibility } from '../lib/frontmatter'
-import { encodeNotePath, type Note } from '../lib/notes'
+import { encodeNotePath, noteId, type Note } from '../lib/notes'
 import { useStore, type SaveInput, type Space } from '../store'
 
 interface Form {
+  space: Space
   category: string
   subcategory: string
   title: string
@@ -23,6 +24,7 @@ interface Form {
 }
 
 const fromNote = (n: Note): Form => ({
+  space: n.space,
   category: n.category,
   subcategory: n.meta.subcategory ?? '',
   title: n.meta.title,
@@ -32,8 +34,8 @@ const fromNote = (n: Note): Form => ({
   body: n.body,
 })
 
-const toInput = (f: Form, space: Space, titleSuffix = ''): SaveInput => ({
-  space,
+const toInput = (f: Form, titleSuffix = ''): SaveInput => ({
+  space: f.space,
   category: f.category,
   meta: {
     title: f.title.trim() + titleSuffix,
@@ -45,14 +47,21 @@ const toInput = (f: Form, space: Space, titleSuffix = ''): SaveInput => ({
   body: f.body,
 })
 
+// 搬移到另一個 space 前的確認（spec「搬移」一節）
+const MOVE_WARNING: Record<Space, string> = {
+  shared: '要把這篇筆記搬到共享區嗎？同事將能看到並編輯它。只會帶過去目前的內容，個人 repo 的舊版本不會外流。',
+  personal: '要把這篇筆記搬回個人區嗎？共享 repo 的 git 歷史仍保有舊版本，同事還是看得到以前的內容。',
+}
+
 export function NoteEdit() {
   const editPath = useParams()['*']
   const [params] = useSearchParams()
-  const { notes, categories, config, status, saveNote, fetchLatest, uploadImage, subcategoriesOf } = useStore()
+  const { notes, mode, spaces, config, status, saveNote, fetchLatest, uploadImage, categoriesOf, subcategoriesOf } = useStore()
   const navigate = useNavigate()
   const toast = useToast()
 
-  const original = editPath ? (notes.find((n) => n.path === editPath) ?? null) : null
+  // 網址帶的是 noteId（共享筆記有 shared/ 前綴）
+  const original = editPath ? (notes.find((n) => noteId(n) === editPath) ?? null) : null
   const draftId = editPath ?? 'new'
 
   /** 這次編輯所根據的版本（儲存時用它的 sha 偵測衝突） */
@@ -73,10 +82,12 @@ export function NoteEdit() {
   useEffect(() => {
     if (initialized.current || status === 'loading' || (editPath && !original)) return
     initialized.current = true
-    const cat = params.get('cat') ?? categories[0] ?? config.categories[0]
+    const space: Space = params.get('space') === 'shared' && spaces.includes('shared') ? 'shared' : (spaces[0] ?? 'personal')
+    const cat = params.get('cat') ?? categoriesOf(space)[0] ?? config.categories[0]!
     const initial: Form = original
       ? fromNote(original)
       : {
+          space,
           category: cat,
           subcategory: params.get('sub') ?? '',
           title: params.get('title') ?? (cat === config.diaryCategory ? '日記' : ''),
@@ -87,7 +98,7 @@ export function NoteEdit() {
         }
     const draft = loadDraft(draftId)
     if (draft && confirm(`發現 ${new Date(draft.savedAt).toLocaleString('zh-TW')} 未儲存的草稿，要還原嗎？`)) {
-      setForm({ category: draft.category, subcategory: '', ...draft.meta, body: draft.body })
+      setForm({ ...initial, category: draft.category, subcategory: '', ...draft.meta, body: draft.body })
       setDirty(true)
     } else {
       clearDraft(draftId)
@@ -96,7 +107,7 @@ export function NoteEdit() {
     setBase(original)
     // 快取的版本可能不是最新的：開啟編輯時向 GitHub 確認一次
     if (original) {
-      fetchLatest(original.path)
+      fetchLatest(noteId(original))
         .then((latest) => {
           if (!latest) {
             toast('這篇筆記已在別處被刪除，儲存時會重新建立。', 'warn')
@@ -111,7 +122,7 @@ export function NoteEdit() {
           /* 離線時先用快取版本，儲存時仍會檢查衝突 */
         })
     }
-  }, [status, original, editPath, params, categories, config, draftId, fetchLatest, toast])
+  }, [status, original, editPath, params, spaces, categoriesOf, config, draftId, fetchLatest, toast])
 
   // 自動暫存草稿：避免寫入失敗或關掉頁面時遺失內容
   useEffect(() => {
@@ -152,7 +163,7 @@ export function NoteEdit() {
     try {
       for (const [i, file] of imgs.entries()) {
         setUploading(imgs.length > 1 ? `上傳圖片 ${i + 1}/${imgs.length}…` : '上傳圖片中…')
-        const md = await uploadImage(file, original?.space ?? 'personal')
+        const md = await uploadImage(file, form!.space)
         const text = `\n${md}\n`
         const at = pos
         pos += text.length
@@ -168,13 +179,15 @@ export function NoteEdit() {
 
   async function save(asCopy = false) {
     if (!form) return
+    const prev = asCopy ? null : base
+    if (prev && prev.space !== form.space && !confirm(MOVE_WARNING[form.space])) return
     setBusy(true)
     try {
-      const { note, warning } = await saveNote(asCopy ? null : base, toInput(form, original?.space ?? 'personal', asCopy ? '（衝突副本）' : ''))
+      const { note, warning } = await saveNote(prev, toInput(form, asCopy ? '（衝突副本）' : ''))
       clearDraft(draftId)
       setDirty(false)
       toast(warning ?? '已儲存', warning ? 'warn' : 'info')
-      navigate(`/note/${encodeNotePath(note.path)}`, { replace: true })
+      navigate(`/note/${encodeNotePath(noteId(note))}`, { replace: true })
     } catch (e) {
       const { category, body, ...meta } = form
       saveDraft(draftId, { category, meta, body, savedAt: new Date().toISOString() })
@@ -198,11 +211,12 @@ export function NoteEdit() {
         // 新增時撞名：直接開啟那篇已存在的筆記
         clearDraft(draftId)
         setDirty(false)
-        await fetchLatest(conflict.path)
-        navigate(`/note/${encodeNotePath(conflict.path)}`, { replace: true })
+        const id = noteId({ space: form.space, path: conflict.path })
+        await fetchLatest(id)
+        navigate(`/note/${encodeNotePath(id)}`, { replace: true })
         return
       }
-      const latest = await fetchLatest(conflict.path)
+      const latest = await fetchLatest(noteId({ space: form.space, path: conflict.path }))
       setBase(latest)
       if (latest) setForm(fromNote(latest))
       setDirty(false)
@@ -224,8 +238,9 @@ export function NoteEdit() {
     else navigate('/notes')
   }
 
+  const categories = categoriesOf(form.space)
   const catOptions = categories.includes(form.category) ? categories : [...categories, form.category]
-  const subs = subcategoriesOf(form.category)
+  const subs = subcategoriesOf(form.category, form.space)
   const subOptions = !form.subcategory || subs.includes(form.subcategory) ? subs : [...subs, form.subcategory]
 
   return (
@@ -254,7 +269,7 @@ export function NoteEdit() {
                 update({
                   category: e.target.value,
                   // 換分類時，新分類沒有這個子分類就清掉
-                  subcategory: subcategoriesOf(e.target.value).includes(form.subcategory) ? form.subcategory : '',
+                  subcategory: subcategoriesOf(e.target.value, form.space).includes(form.subcategory) ? form.subcategory : '',
                 })
               }
             >
@@ -285,6 +300,20 @@ export function NoteEdit() {
         <label htmlFor="tags">標籤</label>
         <TagInput tags={form.tags} onChange={(tags) => update({ tags })} />
 
+        {mode === 'owner' && spaces.length > 1 && (
+          <fieldset className="segmented">
+            <legend>存放位置</legend>
+            <label>
+              <input type="radio" name="space" checked={form.space === 'personal'} onChange={() => update({ space: 'personal' })} />
+              <Lock size={16} aria-hidden /> 個人（只有我）
+            </label>
+            <label>
+              <input type="radio" name="space" checked={form.space === 'shared'} onChange={() => update({ space: 'shared' })} />
+              <Users size={16} aria-hidden /> 共享（同事可看可編輯）
+            </label>
+          </fieldset>
+        )}
+        {mode === 'owner' && (
         <fieldset className="segmented">
           <legend>誰可以看</legend>
           <label>
@@ -296,7 +325,8 @@ export function NoteEdit() {
             <Globe size={16} aria-hidden /> 公開
           </label>
         </fieldset>
-        {form.visibility === 'public' && (
+        )}
+        {mode === 'owner' && form.visibility === 'public' && (
           <p className="small hint">公開筆記會複製到公開分支，任何人都能在網站上看到。之後改回私人會從網站移除，但公開分支的 git 歷史仍保有舊版本。</p>
         )}
       </div>
@@ -353,7 +383,7 @@ export function NoteEdit() {
           placeholder="用 Markdown 寫內容…"
         />
         <div className="preview">
-          {form.body.trim() ? <MarkdownView body={form.body} /> : <p className="muted">（沒有內容）</p>}
+          {form.body.trim() ? <MarkdownView body={form.body} space={form.space} /> : <p className="muted">（沒有內容）</p>}
         </div>
       </div>
 

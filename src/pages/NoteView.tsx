@@ -6,16 +6,16 @@ import { VisibilityBadge } from '../components/NoteItem'
 import { StatusBanner } from '../components/StatusBanner'
 import { useToast } from '../components/Toast'
 import { ConflictError, errorMessage } from '../github/api'
-import { encodeNotePath } from '../lib/notes'
+import { encodeNotePath, noteId } from '../lib/notes'
 import { useStore } from '../store'
 
 export function NoteView() {
-  const path = useParams()['*'] ?? ''
+  const id = useParams()['*'] ?? ''
   const { notes, mode, status, deleteNote } = useStore()
   const navigate = useNavigate()
   const toast = useToast()
   const [busy, setBusy] = useState(false)
-  const note = notes.find((n) => n.path === path)
+  const note = notes.find((n) => noteId(n) === id)
 
   if (!note) {
     return (
@@ -53,12 +53,12 @@ export function NoteView() {
         <button className="icon-btn" aria-label="返回" onClick={() => (history.length > 1 ? navigate(-1) : navigate('/notes'))}>
           <ArrowLeft size={22} />
         </button>
-        {mode === 'owner' && (
+        {mode !== 'visitor' && (
           <div className="header-actions">
             <button className="icon-btn" aria-label="刪除" onClick={remove} disabled={busy}>
               <Trash2 size={20} />
             </button>
-            <Link className="btn btn-primary" to={`/edit/${encodeNotePath(note.path)}`}>
+            <Link className="btn btn-primary" to={`/edit/${encodeNotePath(noteId(note))}`}>
               <Pencil size={16} aria-hidden /> 編輯
             </Link>
           </div>
@@ -84,7 +84,7 @@ export function NoteView() {
           ))}
         </div>
       )}
-      <MarkdownView body={note.body} />
+      <MarkdownView body={note.body} space={note.space} />
     </article>
   )
 }

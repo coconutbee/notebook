@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { FolderInput, Globe, Lock } from 'lucide-react'
+import { FolderInput, Globe, Lock, Users } from 'lucide-react'
 import { ConflictError, errorMessage } from '../github/api'
-import { encodeNotePath, excerpt, type Note } from '../lib/notes'
+import { encodeNotePath, excerpt, noteId, type Note } from '../lib/notes'
 import { splitHighlight } from '../lib/search'
 import { useStore } from '../store'
 import { CategoryBadge, categoryStyle } from './Category'
@@ -28,10 +28,12 @@ const SEP = '\u0000'
 
 /** 一個下拉選單同時選分類與子分類，選了就直接儲存（一次 commit） */
 function MoveSelect({ note }: { note: Note }) {
-  const { categories, subcategoriesOf, saveNote } = useStore()
+  const { categoriesOf, subcategoriesOf, saveNote } = useStore()
   const toast = useToast()
   const [busy, setBusy] = useState(false)
   const current = note.category + SEP + (note.meta.subcategory ?? '')
+  // 只能在同一個 space 內換分類；換 space 要到編輯器（會有確認）
+  const categories = categoriesOf(note.space)
   const cats = categories.includes(note.category) ? categories : [...categories, note.category]
 
   async function move(value: string) {
@@ -65,7 +67,7 @@ function MoveSelect({ note }: { note: Note }) {
       <span className="sr-only">把「{note.meta.title}」移到</span>
       <select value={current} disabled={busy} onChange={(e) => void move(e.target.value)}>
         {cats.map((c) => {
-          const subs = subcategoriesOf(c)
+          const subs = subcategoriesOf(c, note.space)
           const curSub = c === note.category ? note.meta.subcategory : undefined
           const all = curSub && !subs.includes(curSub) ? [...subs, curSub] : subs
           return (
@@ -102,7 +104,7 @@ export function NoteItem({
   const summary = snippet || excerpt(note.body)
   return (
     <li className={`note-card ${categoryStyle(note.category).hue}`}>
-      <Link to={`/note/${encodeNotePath(note.path)}`} className="note-item">
+      <Link to={`/note/${encodeNotePath(noteId(note))}`} className="note-item">
         <div className="note-item-top">
           <CategoryBadge name={note.category} sub={note.meta.subcategory} />
           {note.meta.date && <time className="muted small">{note.meta.date.slice(5).replace('-', '/')}</time>}
@@ -121,6 +123,11 @@ export function NoteItem({
               <span key={t}>#{t}</span>
             ))}
             {showBadge && <VisibilityBadge note={note} />}
+            {showBadge && note.space === 'shared' && (
+              <span className="badge badge-shared">
+                <Users size={12} aria-hidden /> 共享
+              </span>
+            )}
           </div>
         )}
       </Link>

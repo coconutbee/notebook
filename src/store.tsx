@@ -304,10 +304,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       if (prev && prev.space === space && prev.path === path) {
         sha = await target.putFile(path, raw, `更新筆記：${m.title}`, prev.sha)
       } else {
-        if (prev && prev.space !== space) {
-          // 換 space：先把這篇用到的圖片帶過去（只帶這篇的，不會連帶其他私人圖片）
-          const refs = imageRefs(body)
-          if (refs.length) commitImages(space, await copyImages(target, imagesRef.current[space], refs, imageSource(prev.space)))
+        // 換 space（或新筆記的圖片先上傳到另一區後才切換）：把這篇用到、目標還沒有的圖片帶過去。
+        // 只帶這篇引用的，不會連帶其他私人圖片
+        const other: Space = space === 'shared' ? 'personal' : 'shared'
+        const missing = imageRefs(body).filter((p) => !imagesRef.current[space].has(p))
+        if (missing.length && (other === 'personal' ? github?.data : github?.shared)) {
+          commitImages(space, await copyImages(target, imagesRef.current[space], missing, imageSource(other)))
         }
         // 新路徑：不帶 sha，若檔案已存在 GitHub 會拒絕 → ConflictError，不會覆蓋（原檔也不會被刪）
         const verb = !prev ? '新增' : prev.space !== space ? `移到${SPACE_LABEL[space]}區` : '移動'
@@ -333,7 +335,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       }
       return { note, warning: warnings.join('\n') || undefined }
     },
-    [ghOf, commit, commitImages, imageSource, publish],
+    [github, ghOf, commit, commitImages, imageSource, publish],
   )
 
   const deleteNote = useCallback(

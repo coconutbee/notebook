@@ -15,10 +15,11 @@ const Tracker = lazy(() => import('./pages/Tracker').then((m) => ({ default: m.T
 
 function Shell() {
   const { mode } = useStore()
-  const owner = mode === 'owner'
+  // 同事（coworker）也是登入狀態：可以編輯共享筆記，但沒有追蹤功能
+  const signedIn = mode !== 'visitor'
   return (
-    <div className={owner ? 'app' : 'app visitor'}>
-      {owner ? (
+    <div className={signedIn ? 'app' : 'app visitor'}>
+      {signedIn ? (
         <Nav />
       ) : (
         <header className="visitor-bar">
@@ -40,11 +41,15 @@ function Shell() {
           <Route path="/setup" element={<Setup />} />
           <Route path="/notes" element={<NoteList />} />
           <Route path="/note/*" element={<NoteView />} />
-          {owner && (
+          {signedIn && (
             <>
               <Route path="/new" element={<NoteEdit key="new" />} />
               <Route path="/edit/*" element={<NoteEdit />} />
-              <Route
+              <Route path="/settings" element={<Settings />} />
+            </>
+          )}
+          {mode === 'owner' && (
+            <Route
                 path="/track"
                 element={
                   <Suspense fallback={<p className="page muted loading">載入中…</p>}>
@@ -52,11 +57,9 @@ function Shell() {
                   </Suspense>
                 }
               />
-              <Route path="/settings" element={<Settings />} />
-            </>
           )}
           {/* 訪客的首頁就是公開筆記列表 */}
-          <Route path="/" element={owner ? <Home /> : <NoteList />} />
+          <Route path="/" element={signedIn ? <Home /> : <NoteList />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>

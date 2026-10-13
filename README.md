@@ -106,6 +106,43 @@ npm run build    # 型別檢查並產生 dist/
   - 「沒有寫入權限」：Contents 不是 Read and write
 - 懷疑 token 外洩：到 GitHub 刪除它（Revoke），再建立新的
 
+## 和同事共享筆記
+
+同事可以看、可以編輯你標成「共享」的筆記，但完全看不到你的私人筆記、日記和追蹤記錄。做法是把共享筆記放在另一個 repo：GitHub 的權限以整個 repo 為單位，所以同事只會被加進共享 repo。
+
+| 位置 | 誰能存取 | 內容 |
+| --- | --- | --- |
+| `coconutbee/notebook-data` | 只有你 | 私人筆記、日記、追蹤、它們的圖片 |
+| `<組織>/notebook-shared` | 你＋同事 | 共享筆記、它們的圖片、共享分類 |
+
+**一次性設定（你）**
+
+1. GitHub 右上角 **＋ → New organization** → 選 Free，建立組織（例如 `coconutbee-notes`）。
+2. 組織的 **Settings → Personal access tokens → Settings**：允許 fine-grained personal access tokens（可選擇是否需要審核）。
+3. 在組織底下建立**私人** repo `notebook-shared`（勾選 Add a README，讓 repo 不是空的）。
+4. 組織的 **People → Invite member** 邀請同事；在 repo 的 **Settings → Collaborators and teams** 給同事 **Write** 權限。
+5. 把 `src/config.ts` 的 `SHARED_OWNER` 改成你的組織名稱，push 後自動部署。
+
+**建立共享 token（你和每位同事各自做）**
+
+- GitHub → Settings → Developer settings → Fine-grained tokens → Generate new token
+- **Resource owner** 選組織（不是自己的帳號）
+- **Repository access** 只選 `notebook-shared`
+- **Contents** 設為 **Read and write**
+
+fine-grained token 只能屬於一個擁有者，所以你需要兩把 token：個人 token（`notebook-data`＋`notebook`）和共享 token。同事只需要共享 token。
+
+**使用方式**
+
+- **你**：在網站設定畫面填兩把 token。編輯器多一個「存放位置：個人／共享」，切換後儲存，就會把筆記和它用到的圖片搬過去。
+- **同事**：只填共享 token。看得到也能編輯所有共享筆記，沒有追蹤功能，也不能把筆記設成公開。
+
+**隱私注意**
+
+- 筆記搬到共享後，再搬回個人，共享 repo 的 git 歷史仍保有舊版本，同事還是看得到以前的內容。不確定的內容先不要放進共享。
+- 共享筆記設為公開時，會放在公開分支的 `shared/` 底下。
+- 同事改了已公開的共享筆記之後，你下次打開網站時會自動更新公開版本。
+
 ## 備份資料
 
 所有資料都在 `notebook-data` 這個 git repo 裡，每次存檔都是一個 commit，本身就有完整的版本歷史。

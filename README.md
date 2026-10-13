@@ -117,7 +117,7 @@ npm run build    # 型別檢查並產生 dist/
 
 **一次性設定（你）**
 
-1. GitHub 右上角 **＋ → New organization** → 選 Free，建立組織（例如 `coconutbee-notes`）。
+1. GitHub 右上角 **＋ → New organization** → 選 Free，建立組織 `notebook-shared`（名稱要和 `src/config.ts` 的 `SHARED_OWNER` 相同）。
 2. 組織的 **Settings → Personal access tokens → Settings**：允許 fine-grained personal access tokens（可選擇是否需要審核）。
 3. 在組織底下建立**私人** repo `notebook-shared`（勾選 Add a README，讓 repo 不是空的）。
 4. 組織的 **People → Invite member** 邀請同事；在 repo 的 **Settings → Collaborators and teams** 給同事 **Write** 權限。

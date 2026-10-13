@@ -10,7 +10,7 @@ import { toDateStr } from '../lib/date'
 import { clearDraft, loadDraft, saveDraft } from '../lib/drafts'
 import type { Visibility } from '../lib/frontmatter'
 import { encodeNotePath, type Note } from '../lib/notes'
-import { useStore, type SaveInput } from '../store'
+import { useStore, type SaveInput, type Space } from '../store'
 
 interface Form {
   category: string
@@ -32,7 +32,8 @@ const fromNote = (n: Note): Form => ({
   body: n.body,
 })
 
-const toInput = (f: Form, titleSuffix = ''): SaveInput => ({
+const toInput = (f: Form, space: Space, titleSuffix = ''): SaveInput => ({
+  space,
   category: f.category,
   meta: {
     title: f.title.trim() + titleSuffix,
@@ -151,7 +152,7 @@ export function NoteEdit() {
     try {
       for (const [i, file] of imgs.entries()) {
         setUploading(imgs.length > 1 ? `上傳圖片 ${i + 1}/${imgs.length}…` : '上傳圖片中…')
-        const md = await uploadImage(file)
+        const md = await uploadImage(file, original?.space ?? 'personal')
         const text = `\n${md}\n`
         const at = pos
         pos += text.length
@@ -169,7 +170,7 @@ export function NoteEdit() {
     if (!form) return
     setBusy(true)
     try {
-      const { note, warning } = await saveNote(asCopy ? null : base, toInput(form, asCopy ? '（衝突副本）' : ''))
+      const { note, warning } = await saveNote(asCopy ? null : base, toInput(form, original?.space ?? 'personal', asCopy ? '（衝突副本）' : ''))
       clearDraft(draftId)
       setDirty(false)
       toast(warning ?? '已儲存', warning ? 'warn' : 'info')

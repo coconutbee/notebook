@@ -39,6 +39,7 @@ function MoveSelect({ note }: { note: Note }) {
     setBusy(true)
     try {
       const { warning } = await saveNote(note, {
+        space: note.space,
         category,
         meta: { ...note.meta, subcategory: sub || undefined },
         body: note.body,

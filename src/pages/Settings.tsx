@@ -22,7 +22,7 @@ function SubcategoryEditor({ category, busy, run, setBusy }: { category: string;
   const count = (s: string) => notes.filter((n) => n.category === category && n.meta.subcategory === s).length
   const unassigned = notes.filter((n) => n.category === category && !n.meta.subcategory).length
   const save = (next: string[], message: string) =>
-    saveConfig({ ...config, subcategories: { ...config.subcategories, [category]: next } }, message)
+    saveConfig('personal', { ...config, subcategories: { ...config.subcategories, [category]: next } }, message)
 
   function add(e: FormEvent) {
     e.preventDefault()
@@ -52,7 +52,7 @@ function SubcategoryEditor({ category, busy, run, setBusy }: { category: string;
       : `確定把「${from}」改名為「${to}」嗎？${n ? `\n會更新 ${n} 篇筆記（每篇是一次 GitHub commit）。` : ''}`
     if (!confirm(msg)) return
     void run('改名中…', async () => {
-      const { warning } = await renameSubcategory(category, from, to, (done, total) => total && setBusy(`更新筆記 ${done}/${total}…`))
+      const { warning } = await renameSubcategory('personal', category, from, to, (done, total) => total && setBusy(`更新筆記 ${done}/${total}…`))
       if (warning) toast(warning, 'error')
       return `已將「${from}」改名為「${to}」`
     })
@@ -157,7 +157,7 @@ function CategoryManager() {
     setAddError(err)
     if (err) return
     void run('新增中…', async () => {
-      await saveConfig({ ...config, categories: [...list, n] }, `新增分類：${n}`)
+      await saveConfig('personal', { ...config, categories: [...list, n] }, `新增分類：${n}`)
       setName('')
       return `已新增分類「${n}」`
     })
@@ -166,7 +166,7 @@ function CategoryManager() {
   function move(i: number, d: -1 | 1) {
     const next = [...list]
     ;[next[i], next[i + d]] = [next[i + d], next[i]]
-    void run('儲存中…', () => saveConfig({ ...config, categories: next }, '調整分類順序'))
+    void run('儲存中…', () => saveConfig('personal', { ...config, categories: next }, '調整分類順序'))
   }
 
   function rename(from: string) {
@@ -181,7 +181,7 @@ function CategoryManager() {
       : `確定把「${from}」改名為「${to}」嗎？${n ? `\n會搬移 ${n} 篇筆記到新資料夾（每篇是一次 GitHub commit）。` : ''}`
     if (!confirm(msg)) return
     void run('改名中…', async () => {
-      const { warning } = await renameCategory(from, to, (done, total) => total && setBusy(`搬移筆記 ${done}/${total}…`))
+      const { warning } = await renameCategory('personal', from, to, (done, total) => total && setBusy(`搬移筆記 ${done}/${total}…`))
       if (warning) toast(warning, 'error')
       return `已將「${from}」改名為「${to}」`
     })
@@ -192,7 +192,7 @@ function CategoryManager() {
     if (c === config.diaryCategory) return toast(`「${c}」是首頁日記使用的分類，不能刪除；可以改名。`, 'error')
     if (!confirm(`確定刪除分類「${c}」嗎？`)) return
     void run('刪除中…', async () => {
-      await saveConfig({ ...config, categories: list.filter((x) => x !== c) }, `刪除分類：${c}`)
+      await saveConfig('personal', { ...config, categories: list.filter((x) => x !== c) }, `刪除分類：${c}`)
       return `已刪除分類「${c}」`
     })
   }
@@ -281,7 +281,7 @@ export function Settings() {
   const [busy, setBusy] = useState(false)
   const publicCount = notes.filter((n) => n.meta.visibility === 'public').length
   const used = new Set(notes.flatMap((n) => imageRefs(n.body)))
-  const unused = [...images.keys()].filter((p) => !used.has(p))
+  const unused = [...images.personal.keys()].filter((p) => !used.has(p))
 
   function cleanImages() {
     const msg =
@@ -289,7 +289,7 @@ export function Settings() {
       '注意：還沒儲存的草稿裡的圖片也算在內。刪除後仍可從 notebook-data 的 git 歷史找回。確定刪除嗎？'
     if (!confirm(msg)) return
     void run(async () => {
-      for (const p of unused) await deleteImage(p)
+      for (const p of unused) await deleteImage('personal', p)
     }, `已刪除 ${unused.length} 張未使用的圖片`)
   }
 
@@ -354,7 +354,7 @@ export function Settings() {
             清理未使用的圖片{unused.length ? `（${unused.length} 張）` : ''}
           </button>
         </div>
-        <p className="small muted">共 {images.size} 張圖片。</p>
+        <p className="small muted">共 {images.personal.size} 張圖片。</p>
       </section>
 
       <section className="card">

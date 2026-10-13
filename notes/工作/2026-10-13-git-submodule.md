@@ -6,7 +6,7 @@ tags:
   - git submodule
 subcategory: git
 visibility: public
-updated: 2026-10-13T03:11:31.251Z
+updated: 2026-10-13T03:43:26.561Z
 ---
 
 # Git Submodule 開發與同步筆記
@@ -22,6 +22,9 @@ updated: 2026-10-13T03:11:31.251Z
 1. **在 Submodule 中 Commit**：保存 Project B 的程式碼變更。
 2. **更新 Project A 的 Submodule Pointer**：讓 Project A 記錄它使用哪個 Project B Commit。
 3. **Merge 回 Project B 的 `main`**：讓 Project B 的正式版本採納這些功能。這個動作**不一定需要**做。
+
+![submodule](../../images/2026-10/mv64yh6eigsp.png)
+
 
 注意：在 Submodule 裡 `git commit` 不會自動更新 Project A 的 Pointer；在 Project A 裡 `git commit` 也不會自動把 Submodule 的程式碼 Push 到 Project B Remote。
 

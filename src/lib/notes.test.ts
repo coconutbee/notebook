@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { decodeBase64, encodeBase64, gitBlobSha } from '../github/base64'
 import { parseConfig } from './config'
 import { parseNote, stringifyNote } from './frontmatter'
-import { buildNote, notePath, sanitizeTitle } from './notes'
+import { buildNote, noteId, notePath, parseNoteId, sanitizeTitle } from './notes'
 
 describe('base64', () => {
   it('中文來回轉換不失真', () => {
@@ -66,5 +66,16 @@ describe('config', () => {
   it('讀取自訂分類，壞檔用預設值', () => {
     expect(parseConfig('{"categories":["工作","旅行"]}').categories).toEqual(['工作', '旅行'])
     expect(parseConfig('not json').categories).toContain('日記')
+  })
+})
+
+describe('space 與 id', () => {
+  it('共享筆記的 id 有 shared/ 前綴，個人筆記 id 就是 path', () => {
+    expect(noteId({ space: 'personal', path: 'notes/工作/a.md' })).toBe('notes/工作/a.md')
+    expect(noteId({ space: 'shared', path: 'notes/工作/a.md' })).toBe('shared/notes/工作/a.md')
+    expect(parseNoteId('shared/notes/工作/a.md')).toEqual({ space: 'shared', path: 'notes/工作/a.md' })
+    expect(parseNoteId('notes/工作/a.md')).toEqual({ space: 'personal', path: 'notes/工作/a.md' })
+    expect(buildNote('notes/工作/a.md', 's', '# x', 'shared')!.space).toBe('shared')
+    expect(buildNote('notes/工作/a.md', 's', '# x')!.space).toBe('personal')
   })
 })

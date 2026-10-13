@@ -8,3 +8,9 @@ export const DATA_REPO = 'notebook-data'
  */
 export const PUBLIC_REPO = 'notebook'
 export const PUBLIC_BRANCH = 'public-notes'
+/**
+ * 與同事共享的筆記：放在 GitHub 組織底下（fine-grained token 只能屬於一個擁有者，
+ * 同事的 token 才能只碰這個 repo）。換成你建立的組織名稱。
+ */
+export const SHARED_OWNER = 'coconutbee-notes'
+export const SHARED_REPO = 'notebook-shared'

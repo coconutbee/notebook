@@ -396,7 +396,32 @@ h2.section-head { display: block; }
 
 /* ---------- 分類管理 ---------- */
 .cat-list { list-style: none; margin: 0 0 12px; padding: 0; }
-.cat-list li { display: flex; align-items: center; gap: 2px; border-bottom: 1px solid var(--border); }
+.cat-list li { border-bottom: 1px solid var(--border); }
+.cat-row { display: flex; align-items: center; gap: 2px; }
+.sub-toggle {
+  display: inline-flex; align-items: center; gap: 4px; min-height: 36px; margin: -4px 0 6px; padding: 0 6px;
+  border: 0; background: none; color: var(--primary); font-size: 0.875rem;
+}
+.sub-toggle svg { transition: transform 150ms; }
+.sub-toggle[aria-expanded='true'] svg { transform: rotate(90deg); }
+.sub-editor { margin: 0 0 12px 16px; padding: 4px 0 4px 12px; border-left: 2px solid var(--border); }
+.sub-list li { border-bottom: 0; }
+.sub-hint { margin: 4px 0 8px; }
+
+/* 側欄與手機的子分類 */
+.sub-nav { list-style: none; margin: 2px 0 6px 22px; padding: 0 0 0 12px; border-left: 2px solid var(--border); display: flex; flex-direction: column; gap: 1px; }
+.sub-nav button {
+  display: flex; align-items: center; gap: 8px; width: 100%; min-height: 40px; padding: 0 10px;
+  border: 0; border-radius: 8px; background: none; text-align: left; font-size: 0.9375rem; color: var(--muted);
+  transition: background-color 150ms, color 150ms;
+}
+.sub-nav button:hover { background: var(--code-bg); color: var(--fg); }
+.sub-nav button[aria-current='true'] { background: var(--primary-soft); color: var(--fg); font-weight: 600; }
+.browse-manage { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; margin-top: 6px; padding: 0 10px; font-size: 0.875rem; text-decoration: none; }
+.sub-chips { margin-top: -4px; }
+.sub-chips .chip-btn { min-height: 36px; font-size: 0.875rem; }
+.chip-count { opacity: 0.7; font-variant-numeric: tabular-nums; }
+.cat-badge-sub { font-weight: 500; }
 .cat-name { flex: 1; min-width: 0; padding: 8px 0; overflow-wrap: anywhere; }
 .cat-add { display: flex; gap: 8px; }
 .cat-add .btn { flex: none; }

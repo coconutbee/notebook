@@ -16,12 +16,13 @@ export function categoryStyle(name: string): { hue: string; Icon: LucideIcon } {
   return { hue: `hue-${h % 6}`, Icon: Folder }
 }
 
-export function CategoryBadge({ name }: { name: string }) {
+export function CategoryBadge({ name, sub }: { name: string; sub?: string }) {
   const { hue, Icon } = categoryStyle(name)
   return (
     <span className={`cat-badge ${hue}`}>
       <Icon size={13} aria-hidden />
       {name}
+      {sub && <span className="cat-badge-sub">／{sub}</span>}
     </span>
   )
 }

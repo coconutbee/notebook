@@ -27,7 +27,7 @@ export function NoteItem({ note, showBadge, snippet, terms = [] }: { note: Note;
     <li>
       <Link to={`/note/${encodeNotePath(note.path)}`} className={`note-item ${categoryStyle(note.category).hue}`}>
         <div className="note-item-top">
-          <CategoryBadge name={note.category} />
+          <CategoryBadge name={note.category} sub={note.meta.subcategory} />
           {note.meta.date && <time className="muted small">{note.meta.date.slice(5).replace('-', '/')}</time>}
         </div>
         <span className="note-title">

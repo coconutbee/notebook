@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { Plus, RefreshCw, Search, X } from 'lucide-react'
-import { CategoryList, TagBars } from '../components/Browse'
+import { CategoryList, NO_SUB, SubChips, TagBars, matchSub } from '../components/Browse'
 import { categoryStyle } from '../components/Category'
 import { NoteItem } from '../components/NoteItem'
 import { StatusBanner } from '../components/StatusBanner'
@@ -13,9 +13,10 @@ import { useStore } from '../store'
 const UNDATED = 'undated'
 
 export function NoteList() {
-  const { notes, categories, mode, status, reload } = useStore()
+  const { notes, categories, mode, status, reload, subcategoriesOf } = useStore()
   const [params, setParams] = useSearchParams()
   const cat = params.get('cat')
+  const sub = cat ? params.get('sub') : null
   const tag = params.get('tag')
   const month = params.get('month')
   const q = params.get('q') ?? ''
@@ -25,6 +26,7 @@ export function NoteList() {
     const next = new URLSearchParams(params)
     if (value) next.set(key, value)
     else next.delete(key)
+    if (key === 'cat') next.delete('sub') // 換分類時清掉子分類
     setParams(next, { replace: true })
   }
 
@@ -34,6 +36,7 @@ export function NoteList() {
     const snippets = new Map<string, string>()
     const filtered = notes.filter((n) => {
       if (cat && n.category !== cat) return false
+      if (!matchSub(n, sub)) return false
       if (tag && !n.meta.tags.includes(tag)) return false
       if (month && (month === UNDATED ? n.meta.date : !n.meta.date.startsWith(month))) return false
       if (!terms.length) return true
@@ -47,11 +50,17 @@ export function NoteList() {
       map.set(k, [...(map.get(k) ?? []), n])
     }
     return { groups: [...map], snippets }
-  }, [notes, cat, tag, month, terms])
+  }, [notes, cat, sub, tag, month, terms])
 
   const catNotes = useMemo(() => (cat ? notes.filter((n) => n.category === cat) : notes), [notes, cat])
-  const tagTitle = `標籤分布${cat ? `・${cat}` : ''}`
-  const tagBars = <TagBars notes={catNotes} current={tag} onPick={(t) => setParam('tag', t)} />
+  const subNotes = useMemo(() => catNotes.filter((n) => matchSub(n, sub)), [catNotes, sub])
+  const subs = cat ? subcategoriesOf(cat) : []
+  const subLabel = sub === NO_SUB ? '未分類' : sub
+  const tagTitle = `標籤分布${cat ? `・${cat}${subLabel ? `／${subLabel}` : ''}` : ''}`
+  const tagBars = <TagBars notes={subNotes} current={tag} onPick={(t) => setParam('tag', t)} />
+  const newLink = cat
+    ? `/new?cat=${encodeURIComponent(cat)}${sub && sub !== NO_SUB ? `&sub=${encodeURIComponent(sub)}` : ''}`
+    : '/new'
 
   return (
     <div className="page page-browse">
@@ -88,7 +97,16 @@ export function NoteList() {
       <div className="browse-layout">
       {/* 寬螢幕：左側分類清單與標籤分布；手機改用下方的分類 chips 與可展開的標籤分布 */}
       <aside className="browse">
-        <CategoryList notes={notes} categories={categories} current={cat} onPick={(c) => setParam('cat', c)} />
+        <CategoryList
+          notes={notes}
+          categories={categories}
+          current={cat}
+          onPick={(c) => setParam('cat', c)}
+          subsOf={subcategoriesOf}
+          currentSub={sub}
+          onPickSub={(s) => setParam('sub', s)}
+          manage={mode === 'owner'}
+        />
         <h2 className="browse-title">{tagTitle}</h2>
         {tagBars}
       </aside>
@@ -120,6 +138,8 @@ export function NoteList() {
           )
         })}
       </div>
+
+      <SubChips notes={catNotes} subs={subs} current={sub} onPick={(s) => setParam('sub', s)} />
 
       <details className="tag-panel">
         <summary>
@@ -171,7 +191,7 @@ export function NoteList() {
       </div>
 
       {mode === 'owner' && (
-        <Link to={cat ? `/new?cat=${encodeURIComponent(cat)}` : '/new'} className="fab" aria-label="新增筆記">
+        <Link to={newLink} className="fab" aria-label="新增筆記">
           <Plus size={28} />
         </Link>
       )}

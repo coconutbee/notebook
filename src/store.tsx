@@ -25,6 +25,8 @@ interface Store {
   mode: 'owner' | 'visitor'
   notes: Note[]
   categories: string[]
+  /** 某分類的子分類：設定檔清單 + 筆記裡出現但不在清單上的（訪客只看得到筆記裡出現的） */
+  subcategoriesOf(category: string): string[]
   config: AppConfig
   status: 'loading' | 'ready' | 'error'
   error: string | null
@@ -43,6 +45,13 @@ interface Store {
    * 任何一篇失敗就停下並丟出錯誤（已搬的不會回復）；再改名一次會繼續搬剩下的
    */
   renameCategory(from: string, to: string, onProgress?: (done: number, total: number) => void): Promise<{ warning?: string }>
+  /** 子分類改名（改成已存在的名稱 = 合併）：更新 config.json，再逐篇改寫筆記的 subcategory；失敗時停下，可再執行一次續做 */
+  renameSubcategory(
+    category: string,
+    from: string,
+    to: string,
+    onProgress?: (done: number, total: number) => void,
+  ): Promise<{ warning?: string }>
   /** 所有月份檔案（key = YYYY-MM） */
   metrics: Record<string, MonthFile>
   /** 所有日子的記錄合併在一起（key = YYYY-MM-DD） */
@@ -187,6 +196,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     return github ? [...config.categories, ...new Set(extra)] : [...new Set(notes.map((n) => n.category))]
   }, [notes, config, github])
 
+  const subcategoriesOf = useCallback(
+    (category: string) => {
+      const listed = github ? (config.subcategories[category] ?? []) : []
+      const used = notes.filter((n) => n.category === category && n.meta.subcategory).map((n) => n.meta.subcategory!)
+      return [...new Set([...listed, ...used])]
+    },
+    [notes, config, github],
+  )
+
   const readImage = useCallback(
     async (sha: string) => {
       const cached = await cacheGet(sha)
@@ -300,8 +318,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           ? cur.categories.map((c) => (c === from ? to : c))
           : [...cur.categories, to]
       if (categories.join('/') !== cur.categories.join('/') || cur.diaryCategory === from) {
+        // 子分類清單跟著分類走；合併時兩邊的子分類都保留
+        const { [from]: moved = [], ...subcategories } = cur.subcategories
+        const mergedSubs = [...new Set([...(subcategories[to] ?? []), ...moved])]
+        if (mergedSubs.length) subcategories[to] = mergedSubs
         await saveConfig(
-          { categories, diaryCategory: cur.diaryCategory === from ? to : cur.diaryCategory },
+          { categories, diaryCategory: cur.diaryCategory === from ? to : cur.diaryCategory, subcategories },
           `分類改名：${from} → ${to}`,
         )
       }
@@ -328,6 +350,48 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       } finally {
         // 搬過公開筆記就同步公開分支（舊路徑移除、新路徑加入）
         if (done && hasPublic(moving)) warning = await publish(notesRef.current)
+      }
+      return { warning }
+    },
+    [need, saveConfig, commit, publish],
+  )
+
+  const renameSubcategory = useCallback(
+    async (category: string, from: string, to: string, onProgress?: (done: number, total: number) => void) => {
+      const gh = need()
+      const cur = configRef.current.config
+      const list = cur.subcategories[category] ?? []
+      const next = list.includes(to)
+        ? list.filter((x) => x !== from)
+        : list.includes(from)
+          ? list.map((x) => (x === from ? to : x))
+          : [...list, to]
+      if (next.join('/') !== list.join('/')) {
+        await saveConfig(
+          { ...cur, subcategories: { ...cur.subcategories, [category]: next } },
+          `子分類改名：${category}／${from} → ${to}`,
+        )
+      }
+      const targets = notesRef.current.filter((n) => n.category === category && n.meta.subcategory === from)
+      let done = 0
+      let warning: string | undefined
+      onProgress?.(0, targets.length)
+      try {
+        for (const old of targets) {
+          // 只改 subcategory 這一行；帶 sha，別處改過時 GitHub 會拒絕（不覆蓋）
+          const raw = stringifyNote({ ...old.meta, subcategory: to }, old.body)
+          const sha = await gh.data.putFile(old.path, raw, `子分類改名：${old.meta.title}（${from} → ${to}）`, old.sha)
+          await cacheSet(sha, raw)
+          commit(sortNotes([...notesRef.current.filter((n) => n.path !== old.path), buildNote(old.path, sha, raw)!]))
+          onProgress?.(++done, targets.length)
+        }
+      } catch (e) {
+        throw new Error(
+          `已更新 ${done}/${targets.length} 篇，在「${targets[done].meta.title}」停止：${e instanceof ConflictError ? '這篇筆記已在其他裝置或 GitHub 上被修改' : errorMessage(e)}\n` +
+            '請按「重新載入」後再改名一次，會繼續更新剩下的筆記。',
+        )
+      } finally {
+        if (done && hasPublic(targets)) warning = await publish(notesRef.current)
       }
       return { warning }
     },
@@ -401,6 +465,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     republish,
     saveConfig,
     renameCategory,
+    renameSubcategory,
+    subcategoriesOf,
     metrics,
     days,
     saveDay,

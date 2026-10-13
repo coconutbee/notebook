@@ -6,6 +6,8 @@ export interface NoteMeta {
   title: string
   date: string
   tags: string[]
+  /** 分類底下的子分類（選填），清單在 config.json 的 subcategories */
+  subcategory?: string
   visibility: Visibility
   updated?: string
 }
@@ -33,6 +35,7 @@ export function parseNote(text: string): { meta: NoteMeta; body: string } {
       title: String(data.title ?? ''),
       date,
       tags: tags.map((t) => t.trim()).filter(Boolean),
+      ...(data.subcategory ? { subcategory: String(data.subcategory).trim() } : {}),
       visibility: data.visibility === 'public' ? 'public' : 'private',
       ...(data.updated ? { updated: String(data.updated) } : {}),
     },
@@ -45,6 +48,7 @@ export function stringifyNote(meta: NoteMeta, body: string): string {
     title: meta.title,
     date: meta.date,
     tags: meta.tags,
+    ...(meta.subcategory ? { subcategory: meta.subcategory } : {}),
     visibility: meta.visibility,
     updated: meta.updated,
   })

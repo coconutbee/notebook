@@ -107,7 +107,12 @@ export function Home() {
       </section>
 
       <section>
-        <h2 className="section-head">分類</h2>
+        <div className="section-head">
+          <h2>分類</h2>
+          <Link to="/settings" className="more">
+            新增／管理分類 <ChevronRight size={16} aria-hidden />
+          </Link>
+        </div>
         <div className="cat-grid">
           {categories.map((c) => {
             const { hue, Icon } = categoryStyle(c)

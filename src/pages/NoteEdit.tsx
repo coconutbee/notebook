@@ -14,6 +14,7 @@ import { useStore, type SaveInput } from '../store'
 
 interface Form {
   category: string
+  subcategory: string
   title: string
   date: string
   tags: string[]
@@ -23,6 +24,7 @@ interface Form {
 
 const fromNote = (n: Note): Form => ({
   category: n.category,
+  subcategory: n.meta.subcategory ?? '',
   title: n.meta.title,
   date: n.meta.date,
   tags: n.meta.tags,
@@ -32,14 +34,20 @@ const fromNote = (n: Note): Form => ({
 
 const toInput = (f: Form, titleSuffix = ''): SaveInput => ({
   category: f.category,
-  meta: { title: f.title.trim() + titleSuffix, date: f.date, tags: f.tags, visibility: f.visibility },
+  meta: {
+    title: f.title.trim() + titleSuffix,
+    date: f.date,
+    tags: f.tags,
+    visibility: f.visibility,
+    ...(f.subcategory ? { subcategory: f.subcategory } : {}),
+  },
   body: f.body,
 })
 
 export function NoteEdit() {
   const editPath = useParams()['*']
   const [params] = useSearchParams()
-  const { notes, categories, config, status, saveNote, fetchLatest, uploadImage } = useStore()
+  const { notes, categories, config, status, saveNote, fetchLatest, uploadImage, subcategoriesOf } = useStore()
   const navigate = useNavigate()
   const toast = useToast()
 
@@ -69,6 +77,7 @@ export function NoteEdit() {
       ? fromNote(original)
       : {
           category: cat,
+          subcategory: params.get('sub') ?? '',
           title: params.get('title') ?? (cat === config.diaryCategory ? '日記' : ''),
           date: params.get('date') ?? toDateStr(),
           tags: [],
@@ -77,7 +86,7 @@ export function NoteEdit() {
         }
     const draft = loadDraft(draftId)
     if (draft && confirm(`發現 ${new Date(draft.savedAt).toLocaleString('zh-TW')} 未儲存的草稿，要還原嗎？`)) {
-      setForm({ category: draft.category, ...draft.meta, body: draft.body })
+      setForm({ category: draft.category, subcategory: '', ...draft.meta, body: draft.body })
       setDirty(true)
     } else {
       clearDraft(draftId)
@@ -215,6 +224,8 @@ export function NoteEdit() {
   }
 
   const catOptions = categories.includes(form.category) ? categories : [...categories, form.category]
+  const subs = subcategoriesOf(form.category)
+  const subOptions = !form.subcategory || subs.includes(form.subcategory) ? subs : [...subs, form.subcategory]
 
   return (
     <div className="page editor-page">
@@ -235,17 +246,40 @@ export function NoteEdit() {
         <div className="row">
           <div>
             <label htmlFor="category">分類</label>
-            <select id="category" value={form.category} onChange={(e) => update({ category: e.target.value })}>
+            <select
+              id="category"
+              value={form.category}
+              onChange={(e) =>
+                update({
+                  category: e.target.value,
+                  // 換分類時，新分類沒有這個子分類就清掉
+                  subcategory: subcategoriesOf(e.target.value).includes(form.subcategory) ? form.subcategory : '',
+                })
+              }
+            >
               {catOptions.map((c) => (
                 <option key={c}>{c}</option>
               ))}
             </select>
           </div>
           <div>
-            <label htmlFor="date">日期（可留空）</label>
-            <input id="date" type="date" value={form.date} onChange={(e) => update({ date: e.target.value })} />
+            <label htmlFor="subcategory">子分類</label>
+            <select id="subcategory" value={form.subcategory} onChange={(e) => update({ subcategory: e.target.value })}>
+              <option value="">（不選）</option>
+              {subOptions.map((s) => (
+                <option key={s}>{s}</option>
+              ))}
+            </select>
           </div>
         </div>
+        {subOptions.length === 0 && (
+          <p className="small hint">
+            「{form.category}」還沒有子分類，可以到 <Link to="/settings">設定 → 分類</Link> 新增。
+          </p>
+        )}
+
+        <label htmlFor="date">日期（可留空）</label>
+        <input id="date" type="date" value={form.date} onChange={(e) => update({ date: e.target.value })} />
 
         <label htmlFor="tags">標籤</label>
         <TagInput tags={form.tags} onChange={(tags) => update({ tags })} />

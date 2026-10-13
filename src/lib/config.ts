@@ -3,11 +3,14 @@ export interface AppConfig {
   categories: string[]
   /** 首頁「今天的日記」使用的分類 */
   diaryCategory: string
+  /** 各分類底下的子分類清單（順序即顯示順序） */
+  subcategories: Record<string, string[]>
 }
 
 export const DEFAULT_CONFIG: AppConfig = {
   categories: ['工作', '腦科學', '讀書心得', '日記'],
   diaryCategory: '日記',
+  subcategories: {},
 }
 
 export function parseConfig(text: string): AppConfig {
@@ -19,10 +22,22 @@ export function parseConfig(text: string): AppConfig {
     return {
       categories: categories.length ? categories : DEFAULT_CONFIG.categories,
       diaryCategory: typeof data.diaryCategory === 'string' ? data.diaryCategory : DEFAULT_CONFIG.diaryCategory,
+      subcategories: parseSubcategories(data.subcategories),
     }
   } catch {
     return DEFAULT_CONFIG
   }
+}
+
+function parseSubcategories(value: unknown): Record<string, string[]> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {}
+  const out: Record<string, string[]> = {}
+  for (const [cat, list] of Object.entries(value)) {
+    if (!Array.isArray(list)) continue
+    const names = [...new Set(list.map((s) => String(s).trim()).filter(Boolean))]
+    if (names.length) out[cat] = names
+  }
+  return out
 }
 
 export const stringifyConfig = (c: AppConfig) => JSON.stringify(c, null, 2) + '\n'

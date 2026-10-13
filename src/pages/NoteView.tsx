@@ -68,6 +68,11 @@ export function NoteView() {
       <div className="note-item-meta small muted">
         {note.meta.date ? <time>{note.meta.date}</time> : <span>未標日期</span>}
         <Link to={`/notes?cat=${encodeURIComponent(note.category)}`}>{note.category}</Link>
+        {note.meta.subcategory && (
+          <Link to={`/notes?cat=${encodeURIComponent(note.category)}&sub=${encodeURIComponent(note.meta.subcategory)}`}>
+            {note.meta.subcategory}
+          </Link>
+        )}
         {mode === 'owner' && <VisibilityBadge note={note} />}
       </div>
       {note.meta.tags.length > 0 && (

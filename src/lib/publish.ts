@@ -9,6 +9,7 @@ interface PublicEntry {
   title: string
   date: string
   tags: string[]
+  subcategory?: string
   updated?: string
   body: string
 }
@@ -59,6 +60,7 @@ export async function syncPublic(pub: GitHub, notes: Note[], images?: ImageSourc
     title: n.meta.title,
     date: n.meta.date,
     tags: n.meta.tags,
+    subcategory: n.meta.subcategory,
     updated: n.meta.updated,
     body: n.body,
   }))
@@ -78,6 +80,6 @@ export async function loadPublicNotes(): Promise<Note[]> {
   return data.notes.flatMap((e) => {
     const n = buildNote(e.path, '', '')
     if (!n) return []
-    return [{ ...n, meta: { title: e.title, date: e.date, tags: e.tags, updated: e.updated, visibility: 'public' as const }, body: e.body }]
+    return [{ ...n, meta: { title: e.title, date: e.date, tags: e.tags, subcategory: e.subcategory, updated: e.updated, visibility: 'public' as const }, body: e.body }]
   })
 }

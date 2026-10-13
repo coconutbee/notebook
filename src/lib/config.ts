@@ -50,3 +50,17 @@ export function categoryError(name: string, existing: string[]): string | null {
   if (existing.includes(name)) return '已經有這個分類了'
   return null
 }
+
+/**
+ * 某分類可選的子分類：先列設定檔的清單（依順序），再加上任何已載入筆記用到的（不分 space）。
+ * 同事的共享設定可能是空的，靠這個也能沿用公開筆記上的子分類。
+ */
+export function subcategoryOptions(
+  category: string,
+  configs: AppConfig[],
+  notes: { category: string; meta: { subcategory?: string } }[],
+): string[] {
+  const listed = configs.flatMap((c) => c.subcategories[category] ?? [])
+  const used = notes.flatMap((n) => (n.category === category && n.meta.subcategory ? [n.meta.subcategory] : []))
+  return [...new Set([...listed, ...used])]
+}

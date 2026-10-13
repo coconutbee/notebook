@@ -3,7 +3,7 @@ import { DATA_REPO, OWNER, PUBLIC_BRANCH, PUBLIC_REPO, SHARED_OWNER, SHARED_REPO
 import { ConflictError, GitHub, errorMessage } from './github/api'
 import { getSharedToken, getToken } from './lib/auth'
 import { cacheGet, cachePrune, cacheSet } from './lib/cache'
-import { DEFAULT_CONFIG, stringifyConfig, type AppConfig } from './lib/config'
+import { DEFAULT_CONFIG, stringifyConfig, subcategoryOptions, type AppConfig } from './lib/config'
 import { nowIso } from './lib/date'
 import { stringifyNote, type NoteMeta } from './lib/frontmatter'
 import { buildNote, noteId, notePath, parseNoteId, sortNotes, type Note, type Space } from './lib/notes'
@@ -275,12 +275,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const subcategoriesOf = useCallback(
     (category: string, space?: Space) => {
-      const list = space ? [space] : spaces
-      const listed = mode === 'visitor' ? [] : list.flatMap((s) => configs[s].config.subcategories[category] ?? [])
-      const used = notes
-        .filter((n) => n.category === category && n.meta.subcategory && (!space || n.space === space))
-        .map((n) => n.meta.subcategory!)
-      return [...new Set([...listed, ...used])]
+      // 設定檔：指定 space 時用該 space 的；擁有者編輯共享筆記時也提供個人區的清單，方便沿用同一套子分類
+      const list: Space[] = space ? (space === 'shared' && mode === 'owner' ? ['shared', 'personal'] : [space]) : spaces
+      return subcategoryOptions(category, mode === 'visitor' ? [] : list.map((s) => configs[s].config), notes)
     },
     [mode, spaces, configs, notes],
   )

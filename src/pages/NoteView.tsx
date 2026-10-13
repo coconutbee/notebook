@@ -11,7 +11,7 @@ import { useStore } from '../store'
 
 export function NoteView() {
   const id = useParams()['*'] ?? ''
-  const { notes, mode, status, deleteNote } = useStore()
+  const { notes, mode, status, deleteNote, canEdit } = useStore()
   const navigate = useNavigate()
   const toast = useToast()
   const [busy, setBusy] = useState(false)
@@ -53,7 +53,7 @@ export function NoteView() {
         <button className="icon-btn" aria-label="返回" onClick={() => (history.length > 1 ? navigate(-1) : navigate('/notes'))}>
           <ArrowLeft size={22} />
         </button>
-        {mode !== 'visitor' && (
+        {canEdit(note) && (
           <div className="header-actions">
             <button className="icon-btn" aria-label="刪除" onClick={remove} disabled={busy}>
               <Trash2 size={20} />

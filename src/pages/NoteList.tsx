@@ -13,7 +13,7 @@ import { useStore } from '../store'
 const UNDATED = 'undated'
 
 export function NoteList() {
-  const { notes, categories, mode, status, reload, subcategoriesOf } = useStore()
+  const { notes, categories, mode, status, reload, subcategoriesOf, canEdit } = useStore()
   const [params, setParams] = useSearchParams()
   const cat = params.get('cat')
   const sub = cat ? params.get('sub') : null
@@ -186,7 +186,7 @@ export function NoteList() {
                 key={noteId(n)}
                 note={n}
                 showBadge={mode === 'owner'}
-                movable={mode !== 'visitor'}
+                movable={canEdit(n)}
                 snippet={snippets.get(noteId(n))}
                 terms={terms}
               />

@@ -10,7 +10,7 @@ import { buildNote, noteId, notePath, parseNoteId, sortNotes, type Note, type Sp
 import { stringifyMonth, type DayEntry, type MonthData } from './lib/metrics'
 import { writeDay, type MonthFile } from './lib/metricsSync'
 import { imageMarkdown, imagePath, imageRefs, mimeOf, prepareImage, toRepoPath } from './lib/images'
-import { hasPublic, loadPublicNotes, publicPath, syncPublic, type ImageSource } from './lib/publish'
+import { hasPublic, loadPublicExtras, loadPublicNotes, publicPath, syncPublic, type ImageSource } from './lib/publish'
 import { copyImages, loadSpace } from './lib/space'
 
 export interface SaveInput {
@@ -29,6 +29,8 @@ type Progress = (done: number, total: number) => void
 interface Store {
   /** owner：個人 token，讀寫全部；coworker：只有共享 token，只看共享筆記；visitor：只能看公開筆記 */
   mode: 'owner' | 'coworker' | 'visitor'
+  /** 這篇筆記目前的身分能不能編輯（同事看到的個人區公開筆記是唯讀的） */
+  canEdit(note: Note): boolean
   /** 可以寫入的 space（擁有者的共享區載入失敗時只有 personal） */
   spaces: Space[]
   /** 擁有者的共享區無法載入時的說明；個人區照常使用 */
@@ -228,6 +230,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             setSharedError(`共享區無法載入：${errorMessage(e)}`)
           }
         }
+        // 同事：也顯示主人的公開筆記（從公開分支讀，唯讀）；讀不到就略過，不影響共享筆記
+        if (!github.data) loaded.push(...(await loadPublicExtras().catch(() => [])))
         setSharedReady(sharedOk)
         commit(sortNotes(loaded))
         void cachePrune(new Set(shas))
@@ -258,9 +262,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       if (mode === 'visitor') return [...new Set(notes.map((n) => n.category))]
       const list = space ? [space] : spaces
       return [
-        ...new Set(
-          list.flatMap((s) => [...configs[s].config.categories, ...notes.filter((n) => n.space === s).map((n) => n.category)]),
-        ),
+        ...new Set([
+          ...list.flatMap((s) => [...configs[s].config.categories, ...notes.filter((n) => n.space === s).map((n) => n.category)]),
+          // 不指定 space 時也列出其他筆記的分類（同事看到的唯讀公開筆記）
+          ...(space ? [] : notes.map((n) => n.category)),
+        ]),
       ]
     },
     [mode, spaces, configs, notes],
@@ -470,8 +476,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     async (src: string, space: Space) => {
       const path = toRepoPath(src)
       if (!path) return src
-      // 訪客：公開分支的圖片可以直接從 raw.githubusercontent.com 讀
-      if (!github) return `https://raw.githubusercontent.com/${OWNER}/${PUBLIC_REPO}/${PUBLIC_BRANCH}/${publicPath(space, path)}`
+      // 訪客，以及同事看的個人區公開筆記：公開分支的圖片可以直接從 raw.githubusercontent.com 讀
+      if (!github || (space === 'personal' && !github.data))
+        return `https://raw.githubusercontent.com/${OWNER}/${PUBLIC_REPO}/${PUBLIC_BRANCH}/${publicPath(space, path)}`
       const sha = imagesRef.current[space].get(path)
       if (!sha) throw new Error(`找不到圖片 ${path}`)
       return `data:${mimeOf(path)};base64,${await readImage(sha, space)}`
@@ -506,6 +513,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const value: Store = {
     mode,
+    canEdit: (note) => mode === 'owner' || (mode === 'coworker' && note.space === 'shared'),
     spaces,
     sharedError,
     notes,

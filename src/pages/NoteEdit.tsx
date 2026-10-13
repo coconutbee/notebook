@@ -56,7 +56,7 @@ const MOVE_WARNING: Record<Space, string> = {
 export function NoteEdit() {
   const editPath = useParams()['*']
   const [params] = useSearchParams()
-  const { notes, mode, spaces, config, status, saveNote, fetchLatest, uploadImage, categoriesOf, subcategoriesOf } = useStore()
+  const { notes, mode, spaces, config, status, saveNote, fetchLatest, uploadImage, categoriesOf, subcategoriesOf, canEdit } = useStore()
   const navigate = useNavigate()
   const toast = useToast()
 
@@ -141,6 +141,16 @@ export function NoteEdit() {
     return () => removeEventListener('beforeunload', handler)
   }, [dirty])
 
+  // 同事開到主人的公開筆記（唯讀）：不提供編輯
+  if (original && !canEdit(original)) {
+    return (
+      <div className="page">
+        <p className="empty">
+          這篇是公開筆記，只有筆記本主人能編輯。<Link to={`/note/${encodeNotePath(noteId(original))}`}>回到筆記</Link>
+        </p>
+      </div>
+    )
+  }
   if (editPath && !original) {
     return (
       <div className="page">

@@ -101,6 +101,7 @@ export function NoteItem({
   terms?: string[]
   movable?: boolean
 }) {
+  const { mode, canEdit } = useStore()
   const summary = snippet || excerpt(note.body)
   return (
     <li className={`note-card ${categoryStyle(note.category).hue}`}>
@@ -117,12 +118,17 @@ export function NoteItem({
             <Highlight text={summary} terms={terms} />
           </p>
         )}
-        {(note.meta.tags.length > 0 || showBadge) && (
+        {(note.meta.tags.length > 0 || showBadge || mode === 'coworker') && (
           <div className="note-item-meta small muted">
             {note.meta.tags.map((t) => (
               <span key={t}>#{t}</span>
             ))}
             {showBadge && <VisibilityBadge note={note} />}
+            {mode === 'coworker' && !canEdit(note) && (
+              <span className="badge badge-public">
+                <Globe size={12} aria-hidden /> 公開・唯讀
+              </span>
+            )}
             {showBadge && note.space === 'shared' && (
               <span className="badge badge-shared">
                 <Users size={12} aria-hidden /> 共享

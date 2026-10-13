@@ -117,3 +117,9 @@ export async function loadPublicNotes(): Promise<Note[]> {
     return [{ ...n, meta: { title: e.title, date: e.date, tags: e.tags, subcategory: e.subcategory, updated: e.updated, visibility: 'public' as const }, body: e.body }]
   })
 }
+
+/**
+ * 同事登入時額外顯示的公開筆記（唯讀）：只取個人區的。
+ * 共享區的公開筆記同事本來就讀得到原檔，不重複顯示。
+ */
+export const loadPublicExtras = async (): Promise<Note[]> => (await loadPublicNotes()).filter((n) => n.space === 'personal')

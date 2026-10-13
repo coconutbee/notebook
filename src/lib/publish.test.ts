@@ -3,7 +3,7 @@ import { ConflictError, GitHub } from '../github/api'
 import { branches, fakeFetch, repos } from '../test/fakeGitHub'
 import { stringifyNote } from './frontmatter'
 import { buildNote, notePath, type Note } from './notes'
-import { loadPublicNotes, syncPublic } from './publish'
+import { loadPublicExtras, loadPublicNotes, syncPublic } from './publish'
 
 const data = new GitHub('t', 'me', 'data')
 const pub = new GitHub('t', 'me', 'pub', 'public-notes')
@@ -65,6 +65,15 @@ describe('公開同步', () => {
     expect(files.has(`shared/${theirs.path}`)).toBe(true)
     const index = JSON.parse(files.get('index.json')!)
     expect(index.notes.map((n: { title: string }) => n.title).sort()).toEqual(['個人公開', '共享公開'])
+  })
+
+  it('同事額外看到的公開筆記：只有個人區的，共享區的不重複', async () => {
+    const mine = await save('個人公開', 'public')
+    const theirs = { ...(await save('共享公開', 'public')), space: 'shared' as const }
+    await syncPublic(pub, [mine, theirs], {})
+    const index = repos.get('me/pub')!.get('index.json')!
+    vi.stubGlobal('fetch', async () => new Response(index, { status: 200 }))
+    expect((await loadPublicExtras()).map((n) => n.meta.title)).toEqual(['個人公開'])
   })
 
   it('訪客讀回公開筆記時還原 space', async () => {

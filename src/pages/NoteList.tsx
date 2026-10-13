@@ -182,7 +182,14 @@ export function NoteList() {
           <h2 className="group-title">{monthLabel(ym)}</h2>
           <ul className="note-list">
             {list.map((n) => (
-              <NoteItem key={n.path} note={n} showBadge={mode === 'owner'} snippet={snippets.get(n.path)} terms={terms} />
+              <NoteItem
+                key={n.path}
+                note={n}
+                showBadge={mode === 'owner'}
+                movable={mode === 'owner'}
+                snippet={snippets.get(n.path)}
+                terms={terms}
+              />
             ))}
           </ul>
         </section>

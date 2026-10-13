@@ -3,7 +3,7 @@ import { ConflictError, GitHub } from '../github/api'
 import { branches, fakeFetch, repos } from '../test/fakeGitHub'
 import { stringifyNote } from './frontmatter'
 import { buildNote, notePath, type Note } from './notes'
-import { syncPublic } from './publish'
+import { loadPublicNotes, syncPublic } from './publish'
 
 const data = new GitHub('t', 'me', 'data')
 const pub = new GitHub('t', 'me', 'pub', 'public-notes')
@@ -45,6 +45,26 @@ describe('寫入不會默默覆蓋', () => {
 })
 
 describe('公開同步', () => {
+  it('共享的公開筆記放在 shared/ 底下，私人與共享同名筆記互不覆蓋', async () => {
+    const mine = await save('同名', 'public')
+    const theirs = { ...mine, space: 'shared' as const }
+    await syncPublic(pub, [mine, theirs], {})
+    const files = repos.get('me/pub')!
+    expect(files.has(mine.path)).toBe(true)
+    expect(files.has(`shared/${mine.path}`)).toBe(true)
+    const index = JSON.parse(files.get('index.json')!)
+    expect(index.notes.map((n: { space: string }) => n.space).sort()).toEqual(['personal', 'shared'])
+  })
+
+  it('訪客讀回公開筆記時還原 space', async () => {
+    const mine = await save('公開', 'public')
+    await syncPublic(pub, [{ ...mine, space: 'shared' }], {})
+    const index = repos.get('me/pub')!.get('index.json')!
+    vi.stubGlobal('fetch', async () => new Response(index, { status: 200 }))
+    const [n] = await loadPublicNotes()
+    expect([n!.space, n!.path]).toEqual(['shared', mine.path])
+  })
+
   it('只有公開筆記會出現在公開 repo', async () => {
     const a = await save('公開文', 'public')
     const b = await save('私人日記', 'private')

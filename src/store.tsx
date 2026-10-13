@@ -220,7 +220,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const publish = useCallback(
     async (next: Note[]): Promise<string | undefined> => {
       try {
-        await syncPublic(need().pub, next, imageSource())
+        await syncPublic(need().pub, next, { personal: imageSource() })
       } catch (e) {
         return `筆記已儲存，但同步到公開 repo 失敗：${errorMessage(e)}（可到「設定」重新同步）`
       }
@@ -398,7 +398,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [need, saveConfig, commit, publish],
   )
 
-  const republish = useCallback(() => syncPublic(need().pub, notesRef.current, imageSource()), [need, imageSource])
+  const republish = useCallback(() => syncPublic(need().pub, notesRef.current, { personal: imageSource() }), [need, imageSource])
 
   const uploadImage = useCallback(
     async (file: File) => {

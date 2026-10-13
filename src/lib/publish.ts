@@ -2,9 +2,11 @@ import { gitBlobSha } from '../github/base64'
 import type { GitHub } from '../github/api'
 import { OWNER, PUBLIC_BRANCH, PUBLIC_REPO } from '../config'
 import { imageRefs } from './images'
-import { buildNote, sortNotes, type Note } from './notes'
+import { buildNote, sortNotes, type Note, type Space } from './notes'
 
 interface PublicEntry {
+  /** 舊版 index.json 沒有這個欄位：視為個人 */
+  space?: Space
   path: string
   title: string
   date: string
@@ -22,40 +24,54 @@ const PUBLIC_README = `# 公開筆記
 
 export const hasPublic = (notes: (Note | null | undefined)[]) => notes.some((n) => n?.meta.visibility === 'public')
 
-/**
- * 讓公開 repo 剛好等於「所有 visibility: public 的筆記」：
- * 缺的補上、內容不同的更新、不該公開的刪除，最後更新 index.json。
- * 私人 repo 與公開 repo 的同一份內容 blob sha 相同，所以沒變的檔案不會重寫。
- */
 export interface ImageSource {
   /** 資料 repo 裡所有圖片：路徑 → sha */
   shas: Map<string, string>
   read(sha: string): Promise<string>
 }
 
-/** 公開筆記引用到的圖片也一併複製；不再被公開筆記引用的圖片會從公開分支移除 */
-export async function syncPublic(pub: GitHub, notes: Note[], images?: ImageSource): Promise<void> {
+/** 公開分支上的路徑：共享筆記與它的圖片放在 shared/ 底下，筆記裡的 ../../images/ 相對路徑仍然正確 */
+export const publicPath = (space: Space, path: string) => (space === 'shared' ? `shared/${path}` : path)
+
+const SPACES: Space[] = ['personal', 'shared']
+
+/**
+ * 讓公開分支剛好等於「所有 visibility: public 的筆記」（個人與共享）：
+ * 缺的補上、內容不同的更新、不該公開的刪除，最後更新 index.json。
+ * 資料 repo 與公開分支的同一份內容 blob sha 相同，所以沒變的檔案不會重寫。
+ * 公開筆記引用到的圖片一併複製；某個 space 有傳入 images 時，才清掉該 space 不再被引用的圖片。
+ */
+export async function syncPublic(pub: GitHub, notes: Note[], images: Partial<Record<Space, ImageSource>> = {}): Promise<void> {
   const desired = sortNotes(notes.filter((n) => n.meta.visibility === 'public'))
   await pub.ensureBranch(PUBLIC_README)
   const existing = new Map((await pub.listFiles()).map((f) => [f.path, f.sha]))
-  const wanted = new Set(desired.map((n) => n.path))
-  const wantedImages = new Set(desired.flatMap((n) => imageRefs(n.body)).filter((p) => images?.shas.has(p)))
+  const wanted = new Set(desired.map((n) => publicPath(n.space, n.path)))
+  // 公開路徑 → [space, repo 內路徑]
+  const wantedImages = new Map<string, [Space, string]>()
+  for (const n of desired) {
+    for (const p of imageRefs(n.body)) if (images[n.space]?.shas.has(p)) wantedImages.set(publicPath(n.space, p), [n.space, p])
+  }
 
   // GitHub 不允許同一分支同時寫入，所以逐一進行
   for (const n of desired) {
-    const sha = existing.get(n.path)
-    if (sha !== n.sha) await pub.putFile(n.path, n.raw, `發布：${n.meta.title}`, sha)
+    const path = publicPath(n.space, n.path)
+    const sha = existing.get(path)
+    if (sha !== n.sha) await pub.putFile(path, n.raw, `發布：${n.meta.title}`, sha)
   }
-  for (const path of wantedImages) {
-    const sha = images!.shas.get(path)!
-    if (existing.get(path) !== sha) await pub.putBase64(path, await images!.read(sha), `發布圖片：${path}`, existing.get(path))
+  for (const [path, [space, repoPath]] of wantedImages) {
+    const src = images[space]!
+    const sha = src.shas.get(repoPath)!
+    if (existing.get(path) !== sha) await pub.putBase64(path, await src.read(sha), `發布圖片：${path}`, existing.get(path))
   }
   for (const [path, sha] of existing) {
-    if ((path.startsWith('notes/') && !wanted.has(path)) || (images && path.startsWith('images/') && !wantedImages.has(path)))
-      await pub.deleteFile(path, sha, `取消發布：${path}`)
+    const isNote = SPACES.some((s) => path.startsWith(publicPath(s, 'notes/')))
+    const imageSpace = SPACES.find((s) => path.startsWith(publicPath(s, 'images/')))
+    const stale = isNote ? !wanted.has(path) : imageSpace !== undefined && !!images[imageSpace] && !wantedImages.has(path)
+    if (stale) await pub.deleteFile(path, sha, `取消發布：${path}`)
   }
 
   const entries: PublicEntry[] = desired.map((n) => ({
+    space: n.space,
     path: n.path,
     title: n.meta.title,
     date: n.meta.date,
@@ -78,7 +94,7 @@ export async function loadPublicNotes(): Promise<Note[]> {
   if (!res.ok) throw new Error(`無法載入公開筆記（${res.status}）`)
   const data: { notes: PublicEntry[] } = await res.json()
   return data.notes.flatMap((e) => {
-    const n = buildNote(e.path, '', '')
+    const n = buildNote(e.path, '', '', e.space ?? 'personal')
     if (!n) return []
     return [{ ...n, meta: { title: e.title, date: e.date, tags: e.tags, subcategory: e.subcategory, updated: e.updated, visibility: 'public' as const }, body: e.body }]
   })

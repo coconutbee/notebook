@@ -50,11 +50,18 @@ describe('公開同步含圖片', () => {
 
   it('只複製公開筆記用到的圖片；改回私人後移除', async () => {
     const { note, images } = await setup('public')
-    await syncPublic(pub, [note], images)
+    await syncPublic(pub, [note], { personal: images })
     expect(repos.get('me/pub')!.get(IMG)).toBe('fake-jpeg')
     expect(repos.get('me/pub')!.has('images/2026-10/private.jpg')).toBe(false)
 
-    await syncPublic(pub, [{ ...note, meta: { ...note.meta, visibility: 'private' } }], images)
+    await syncPublic(pub, [{ ...note, meta: { ...note.meta, visibility: 'private' } }], { personal: images })
+    expect(repos.get('me/pub')!.has(IMG)).toBe(false)
+  })
+
+  it('共享的公開筆記，圖片放在 shared/images/ 底下', async () => {
+    const { note, images } = await setup('public')
+    await syncPublic(pub, [{ ...note, space: 'shared' }], { shared: images })
+    expect(repos.get('me/pub')!.get(`shared/${IMG}`)).toBe('fake-jpeg')
     expect(repos.get('me/pub')!.has(IMG)).toBe(false)
   })
 })

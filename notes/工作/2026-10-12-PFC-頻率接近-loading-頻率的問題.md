@@ -5,8 +5,9 @@ tags:
   - PFC
   - iTHD
   - PF
+subcategory: 測試
 visibility: public
-updated: 2026-10-12T05:59:15.563Z
+updated: 2026-10-13T03:12:50.798Z
 ---
 
 ## PFC難題

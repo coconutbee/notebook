@@ -5,9 +5,12 @@
       "path": "notes/工作/2026-10-28-Hold-up-Time-Process.md",
       "title": "Hold-up Time Process",
       "date": "2026-10-28",
-      "tags": [],
+      "tags": [
+        "Hold-up time",
+        "LLC"
+      ],
       "subcategory": "測試",
-      "updated": "2026-10-28T00:52:56.191Z",
+      "updated": "2026-10-28T00:53:34.186Z",
       "body": "### Definition of Hold-up time\n- The time a power supply can keep its output voltage within regulation after the AC input is lost, using only energy stored in its bulk capacitors.\n\n---\n\n### Hold-up Time Process\u000b\n\n- t1: The AC input is lost, but the PFC and Vbus carry on for a few duty cycles.\n- t2: Vbus starts to fall and AC_loss_L goes low.\n- t3: Cbus supplies the load and Vbus decays slowly.\n- t4: Cbulk supplies the load and the LLC lowers its switching frequency. The lower frequency raises the LLC gain, which keeps Vout regulated from a falling Vbus.\n- t5: The LLC reaches its minimum frequency and can no longer raise the gain, so PW_OK goes low and Vout drops.\n- t_FW (amber): In practice the firmware ends hold-up at about 20 ms under heavy load, before the LLC reaches its limit.\n\n\n![hold-up_time_process](../../images/2026-10/mvrege7w502t.png)\n\n\n---\n\n### How does the LLC keep Vout stable when Vbus drops?\n\n- Idea: the LLC has a “gain knob”, and the knob is frequency.\nHigher frequency gives lower gain; lower frequency gives higher gain.\n- Normal: Vbus is 400 V, and the LLC runs at its resonant point (gain ≈ 1).\n- AC lost: Vbus starts falling, so the LLC lowers its frequency to raise the gain.\n- Result: Vbus goes down, but Vout stays flat.\n\n![LLC_freq_modulation](../../images/2026-10/mvregmtjohzw.png)\n\n---\n\n### Why firmware cuts off early\n\n- The main cause is probably capacitive-mode operation of the LLC.\n- Capacitive mode (main cause): \n  - As the frequency is pushed down toward the gain peak, which is below the resonant frequency, the resonant current starts to lead the voltage.\n  - Heavy load makes this worse, because the gain peak moves to a higher frequency and gets lower. The capacitive boundary can therefore be reached before the programmed minimum frequency.\n\n![operation_region](../../images/2026-10/mvreh04f9h49.png)\n\n![operation_region2](../../images/2026-10/mvreh3ur7vlj.png)\n"
     },
     {

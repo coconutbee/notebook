@@ -1,10 +1,12 @@
 ---
 title: Hold-up Time Process
 date: 2026-10-28
-tags: []
+tags:
+  - Hold-up time
+  - LLC
 subcategory: 測試
 visibility: public
-updated: 2026-10-28T00:52:56.191Z
+updated: 2026-10-28T00:53:34.186Z
 ---
 
 ### Definition of Hold-up time
